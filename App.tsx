@@ -1,0 +1,1315 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import { File as ExpoFile } from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
+import * as Updates from 'expo-updates';
+import { EntryCard } from './src/components/EntryCard';
+import { EmptyState } from './src/components/EmptyState';
+import { EntryForm, EntryFormValues } from './src/components/EntryForm';
+import { ScreenHeader } from './src/components/ScreenHeader';
+import { SearchBar } from './src/components/SearchBar';
+import {
+  AppLanguage,
+  getCopy,
+  replaceCount,
+} from './src/constants/localization';
+import { AppTheme } from './src/constants/theme';
+import { useEntries } from './src/hooks/useEntries';
+import { Entry, EntryDraft } from './src/types/entry';
+import {
+  confirmClearLibrary,
+  confirmDeleteEntry,
+  showImageSourcePicker,
+} from './src/utils/alerts';
+import {
+  ArchiveImportEntry,
+  parseImportArchive,
+} from './src/utils/importArchive';
+import {
+  EntrySortOption,
+  filterEntries,
+  getSortDescription,
+  getSortLabel,
+  sortEntries,
+  validateEntryDraft,
+} from './src/utils/entries';
+import { parseWorkbookEntries } from './src/utils/importWorkbook';
+import { openEntryLink } from './src/utils/linking';
+
+const LANGUAGE_STORAGE_KEY = 'app_language';
+
+const EMPTY_FORM: EntryFormValues = {
+  title: '',
+  episode: '',
+  link: '',
+  coverImage: '',
+  localImageUri: null,
+};
+
+const getFileExtension = (fileName: string) => {
+  const parts = fileName.toLowerCase().split('.');
+  return parts.length > 1 ? parts.pop() ?? '' : '';
+};
+
+const getFileNameFromUri = (uri: string) => {
+  const normalizedUri = uri.replace(/\\/g, '/');
+  return normalizedUri.split('/').pop() ?? 'selected-file';
+};
+
+const getPickedFileName = (value: { uri?: string } & Record<string, unknown>) => {
+  const name =
+    typeof value.name === 'string' && value.name.trim() ? value.name.trim() : '';
+
+  if (name) {
+    return name;
+  }
+
+  return value.uri ? getFileNameFromUri(value.uri) : 'selected-file';
+};
+
+const getReadableErrorMessage = (
+  error: unknown,
+  language: AppLanguage = 'th'
+) => {
+  if (error instanceof Error && error.message.trim()) {
+    const message = error.message.trim();
+
+    switch (message) {
+      case 'Unable to read file data.':
+        return getCopy(language).fileReadError;
+      case 'ZIP archive does not contain an Excel workbook.':
+        return getCopy(language).zipMissingWorkbookError;
+      default:
+        return message;
+    }
+  }
+
+  return getCopy(language).unknownError;
+};
+
+const readWebFileAsBase64 = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      const base64 = result.includes(',') ? result.split(',')[1] ?? '' : result;
+
+      if (!base64) {
+        reject(new Error('Unable to read file data.'));
+        return;
+      }
+
+      resolve(base64);
+    };
+
+    reader.onerror = () => {
+      reject(new Error('Unable to read file data.'));
+    };
+
+    reader.readAsDataURL(file);
+  });
+
+const pickWebFile = (accept: string) =>
+  new Promise<File | null>((resolve) => {
+    if (typeof document === 'undefined') {
+      resolve(null);
+      return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.style.display = 'none';
+
+    input.onchange = () => {
+      resolve(input.files?.[0] ?? null);
+      input.remove();
+    };
+
+    input.oncancel = () => {
+      resolve(null);
+      input.remove();
+    };
+
+    document.body.appendChild(input);
+    input.click();
+  });
+
+const stripImportFields = ({
+  importImageBase64,
+  importImageFileName,
+  importImageKey,
+  importImageMimeType,
+  ...draft
+}: ArchiveImportEntry): EntryDraft => draft;
+
+const hydrateArchiveImagesForWeb = (drafts: ArchiveImportEntry[]) => {
+  let attachedCount = 0;
+
+  const nextDrafts = drafts.map((draft) => {
+    if (!draft.importImageBase64 || !draft.importImageMimeType) {
+      return stripImportFields(draft);
+    }
+
+    attachedCount += 1;
+
+    return {
+      ...stripImportFields(draft),
+      coverImage: `data:${draft.importImageMimeType};base64,${draft.importImageBase64}`,
+    };
+  });
+
+  return {
+    drafts: nextDrafts,
+    attachedCount,
+  };
+};
+
+export default function App() {
+  const {
+    entries,
+    isLoading,
+    isSaving,
+    addEntry,
+    updateEntry,
+    deleteEntry,
+    importEntries,
+    clearEntries,
+  } = useEntries();
+
+  const [language, setLanguage] = useState<AppLanguage>('th');
+  const [searchText, setSearchText] = useState('');
+  const [sortOption, setSortOption] = useState<EntrySortOption>('latest');
+  const [isFormVisible, setIsFormVisible] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
+  const [formValues, setFormValues] = useState<EntryFormValues>(EMPTY_FORM);
+  const [importOptionsVisible, setImportOptionsVisible] = useState(false);
+  const [specialImportUnlocked, setSpecialImportUnlocked] = useState(false);
+  const [excelTapCount, setExcelTapCount] = useState(0);
+  const [isSyncingUpdate, setIsSyncingUpdate] = useState(false);
+  const [showScrollTopButton, setShowScrollTopButton] = useState(false);
+  const [importResult, setImportResult] = useState({
+    visible: false,
+    title: '',
+    message: '',
+  });
+
+  const listRef = useRef<FlatList<Entry> | null>(null);
+  const copy = useMemo(() => getCopy(language), [language]);
+  const totalEntriesText = `${entries.length} ${copy.entries}`;
+
+  const supportedColumnsText = useMemo(
+    () =>
+      [
+        copy.supportedColumnsTitle,
+        ...copy.supportedColumns.map((item) => `- ${item}`),
+      ].join('\n'),
+    [copy]
+  );
+
+  const specialZipHelpText = useMemo(
+    () =>
+      [
+        copy.specialZipFormatTitle,
+        ...copy.specialZipFormat.map((item) => `- ${item}`),
+      ].join('\n'),
+    [copy]
+  );
+
+  const filteredEntries = useMemo(
+    () => sortEntries(filterEntries(entries, searchText), sortOption),
+    [entries, searchText, sortOption]
+  );
+
+  const isEditing = Boolean(editingEntry);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadLanguage = async () => {
+      const storedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+
+      if (
+        isMounted &&
+        (storedLanguage === 'th' || storedLanguage === 'en')
+      ) {
+        setLanguage(storedLanguage);
+      }
+    };
+
+    loadLanguage();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const changeLanguage = async (nextLanguage: AppLanguage) => {
+    setLanguage(nextLanguage);
+    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+  };
+
+  const resetForm = () => {
+    setFormValues(EMPTY_FORM);
+    setEditingEntry(null);
+    setIsFormVisible(false);
+  };
+
+  const showCreateForm = () => {
+    setEditingEntry(null);
+    setFormValues(EMPTY_FORM);
+    setIsFormVisible(true);
+  };
+
+  const showImportResult = (title: string, message: string) => {
+    setImportResult({
+      visible: true,
+      title,
+      message,
+    });
+  };
+
+  const startEditEntry = (entry: Entry) => {
+    setEditingEntry(entry);
+    setFormValues({
+      title: entry.title,
+      episode: entry.episode,
+      link: entry.link,
+      coverImage: entry.coverImage,
+      localImageUri: entry.localImageUri ?? null,
+    });
+    setIsFormVisible(true);
+  };
+
+  const handleToggleForm = () => {
+    if (isFormVisible) {
+      resetForm();
+      return;
+    }
+
+    showCreateForm();
+  };
+
+  const handleListScroll = (offsetY: number) => {
+    setShowScrollTopButton(offsetY > 520);
+  };
+
+  const scrollToTop = () => {
+    listRef.current?.scrollToOffset?.({
+      offset: 0,
+      animated: true,
+    });
+  };
+
+  const handleExcelSecretTap = () => {
+    const nextCount = excelTapCount + 1;
+
+    if (nextCount >= 4) {
+      setSpecialImportUnlocked(true);
+      setExcelTapCount(0);
+      showImportResult(
+        copy.specialZipUnlockedTitle,
+        copy.specialZipUnlockedMessage
+      );
+      return;
+    }
+
+    setExcelTapCount(nextCount);
+  };
+
+  const handlePickFromLibrary = async () => {
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (permission.status !== 'granted') {
+        Alert.alert(copy.photoPermissionTitle, copy.photoPermissionMessage);
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [3, 4],
+        quality: 0.85,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setFormValues((current) => ({
+          ...current,
+          localImageUri: result.assets[0].uri,
+          coverImage: '',
+        }));
+      }
+    } catch (error) {
+      Alert.alert(copy.unableToPickImageTitle, copy.unableToPickImageMessage);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (permission.status !== 'granted') {
+        Alert.alert(copy.cameraPermissionTitle, copy.cameraPermissionMessage);
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [3, 4],
+        quality: 0.85,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setFormValues((current) => ({
+          ...current,
+          localImageUri: result.assets[0].uri,
+          coverImage: '',
+        }));
+      }
+    } catch (error) {
+      Alert.alert(copy.unableToTakePhotoTitle, copy.unableToTakePhotoMessage);
+    }
+  };
+
+  const handleOpenImageOptions = () => {
+    showImageSourcePicker(
+      {
+        onTakePhoto: handleTakePhoto,
+        onPickFromLibrary: handlePickFromLibrary,
+      },
+      language
+    );
+  };
+
+  const handleChangeForm = <K extends keyof EntryFormValues>(
+    key: K,
+    value: EntryFormValues[K]
+  ) => {
+    setFormValues((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
+
+  const handleSubmit = async () => {
+    const draft: EntryDraft = {
+      title: formValues.title,
+      episode: formValues.episode,
+      link: formValues.link,
+      coverImage: formValues.coverImage,
+      localImageUri: formValues.localImageUri ?? undefined,
+    };
+
+    const validationError = validateEntryDraft(draft, language);
+    if (validationError) {
+      Alert.alert(copy.missingInformation, validationError);
+      return;
+    }
+
+    try {
+      if (editingEntry) {
+        await updateEntry(editingEntry.id, draft);
+        Alert.alert(copy.savedTitle, copy.savedMessage);
+      } else {
+        await addEntry(draft);
+        Alert.alert(copy.addedTitle, copy.addedMessage);
+      }
+
+      resetForm();
+    } catch (error) {
+      Alert.alert(copy.saveFailedTitle, copy.saveFailedMessage);
+    }
+  };
+
+  const handleDelete = (entryId: string) => {
+    confirmDeleteEntry(async () => {
+      try {
+        await deleteEntry(entryId);
+
+        if (editingEntry?.id === entryId) {
+          resetForm();
+        }
+      } catch (error) {
+        Alert.alert(copy.deleteFailedTitle, copy.deleteFailedMessage);
+      }
+    }, language);
+  };
+
+  const handleClearLibrary = () => {
+    confirmClearLibrary(async () => {
+      try {
+        await clearEntries();
+        setSearchText('');
+        resetForm();
+        showImportResult(copy.libraryClearedTitle, copy.libraryClearedMessage);
+      } catch (error) {
+        showImportResult(copy.clearFailedTitle, copy.clearFailedMessage);
+      }
+    }, language);
+  };
+
+  const pickDocumentBase64 = async (type: 'workbook' | 'zip') => {
+    if (Platform.OS === 'web') {
+      const file = await pickWebFile(type === 'zip' ? '.zip' : '.xlsx,.xls');
+
+      if (!file) {
+        return null;
+      }
+
+      const extension = getFileExtension(file.name);
+
+      if (type === 'zip' && extension !== 'zip') {
+        showImportResult(copy.chooseZipTitle, copy.chooseZipMessage);
+        return null;
+      }
+
+      if (type === 'workbook' && extension !== 'xlsx' && extension !== 'xls') {
+        showImportResult(copy.chooseExcelTitle, copy.chooseExcelMessage);
+        return null;
+      }
+
+      return {
+        base64: await readWebFileAsBase64(file),
+        asset: {
+          name: file.name,
+          uri: '',
+        },
+      };
+    }
+
+    if (Platform.OS === 'android' && type === 'zip') {
+      try {
+        const pickedFileResult = await ExpoFile.pickFileAsync(undefined, '*/*');
+        const pickedFile = Array.isArray(pickedFileResult)
+          ? pickedFileResult[0]
+          : pickedFileResult;
+
+        if (!pickedFile) {
+          return null;
+        }
+
+        const fileName = getPickedFileName(
+          pickedFile as unknown as { uri?: string } & Record<string, unknown>
+        );
+
+        const base64 =
+          typeof (pickedFile as { base64?: () => Promise<string> }).base64 ===
+          'function'
+            ? await (pickedFile as { base64: () => Promise<string> }).base64()
+            : await FileSystem.readAsStringAsync(pickedFile.uri, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+
+        return {
+          base64,
+          asset: {
+            name: fileName,
+            uri: pickedFile.uri,
+          },
+        };
+      } catch (error) {
+        showImportResult(
+          copy.androidZipReadFailedTitle,
+          `${copy.androidZipReadFailedMessage}\n\n${getReadableErrorMessage(
+            error,
+            language
+          )}`
+        );
+        return null;
+      }
+    }
+
+    const result = await DocumentPicker.getDocumentAsync({
+      type:
+        type === 'zip'
+          ? '*/*'
+          : [
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              'application/vnd.ms-excel',
+            ],
+      base64: true,
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+
+    if (result.canceled || !result.assets[0]) {
+      return null;
+    }
+
+    const fileAsset = result.assets[0];
+    const extension = getFileExtension(fileAsset.name ?? '');
+
+    if (type === 'zip' && Platform.OS !== 'android' && extension !== 'zip') {
+      showImportResult(copy.chooseZipTitle, copy.chooseZipMessage);
+      return null;
+    }
+
+    if (type === 'workbook' && extension !== 'xlsx' && extension !== 'xls') {
+      showImportResult(copy.chooseExcelTitle, copy.chooseExcelMessage);
+      return null;
+    }
+
+    const base64 =
+      fileAsset.base64 ||
+      (await FileSystem.readAsStringAsync(fileAsset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      }));
+
+    return {
+      base64,
+      asset: fileAsset,
+    };
+  };
+
+  const hydrateArchiveImagesToLocal = async (
+    drafts: ArchiveImportEntry[]
+  ) => {
+    if (Platform.OS === 'web' || !FileSystem.documentDirectory) {
+      return {
+        drafts: drafts.map(stripImportFields),
+        savedCount: 0,
+        failedCount: drafts.filter((draft) => draft.importImageBase64).length,
+      };
+    }
+
+    const folderUri = `${FileSystem.documentDirectory}imported-covers/`;
+    await FileSystem.makeDirectoryAsync(folderUri, { intermediates: true });
+
+    const nextDrafts: EntryDraft[] = [];
+    let savedCount = 0;
+    let failedCount = 0;
+
+    for (let index = 0; index < drafts.length; index += 1) {
+      const draft = drafts[index];
+
+      if (!draft.importImageBase64) {
+        nextDrafts.push(stripImportFields(draft));
+        continue;
+      }
+
+      try {
+        const extension =
+          draft.importImageFileName?.split('.').pop()?.toLowerCase() || 'jpg';
+        const safeTitle = draft.title
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '') || `entry-${index + 1}`;
+        const targetUri = `${folderUri}${safeTitle}-${Date.now()}-${index}.${extension}`;
+
+        await FileSystem.writeAsStringAsync(targetUri, draft.importImageBase64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        nextDrafts.push({
+          ...stripImportFields(draft),
+          coverImage: '',
+          localImageUri: targetUri,
+        });
+        savedCount += 1;
+      } catch (error) {
+        nextDrafts.push(stripImportFields(draft));
+        failedCount += 1;
+      }
+    }
+
+    return {
+      drafts: nextDrafts,
+      savedCount,
+      failedCount,
+    };
+  };
+
+  const handleImportWorkbook = async (includeRemoteImages: boolean) => {
+    try {
+      setImportOptionsVisible(false);
+
+      const picked = await pickDocumentBase64('workbook');
+      if (!picked) {
+        return;
+      }
+
+      const parsedWorkbook = parseWorkbookEntries(picked.base64, {
+        includeRemoteImages,
+        mode: 'normal',
+      });
+
+      if (parsedWorkbook.entries.length === 0) {
+        showImportResult(
+          copy.noImportableRowsTitle,
+          `${supportedColumnsText}\n\n${copy.noImportableRowsExcelSuffix}`
+        );
+        return;
+      }
+
+      const importSummary = await importEntries(parsedWorkbook.entries);
+
+      const detailLines = [
+        `${copy.file}: ${picked.asset.name ?? copy.workbook}`,
+        `${copy.addedEntries} ${importSummary.createdCount} ${copy.entries}`,
+        `${copy.updatedEntries} ${importSummary.updatedCount} ${copy.entries}`,
+        `${copy.imageMode}: ${
+          includeRemoteImages ? copy.importRemoteImageUrlsOnly : copy.skipImages
+        }`,
+      ];
+
+      if (parsedWorkbook.skippedRows > 0) {
+        detailLines.push(
+          replaceCount(copy.skippedRowsWithoutTitle, parsedWorkbook.skippedRows)
+        );
+      }
+
+      if (parsedWorkbook.skippedCoverCount > 0) {
+        detailLines.push(
+          replaceCount(copy.skippedCoverValues, parsedWorkbook.skippedCoverCount)
+        );
+      }
+
+      showImportResult(copy.excelImportCompleteTitle, detailLines.join('\n'));
+    } catch (error) {
+      showImportResult(copy.importFailedTitle, copy.importFailedMessage);
+    }
+  };
+
+  const handleSyncUpdate = async () => {
+    if (__DEV__) {
+      showImportResult(copy.syncUnavailableTitle, copy.syncUnavailableMessage);
+      return;
+    }
+
+    setIsSyncingUpdate(true);
+
+    try {
+      const updateCheck = await Updates.checkForUpdateAsync();
+
+      if (!updateCheck.isAvailable) {
+        showImportResult(copy.noUpdateFoundTitle, copy.noUpdateFoundMessage);
+        return;
+      }
+
+      await Updates.fetchUpdateAsync();
+      showImportResult(copy.updateDownloadedTitle, copy.updateDownloadedMessage);
+      await Updates.reloadAsync();
+    } catch (error) {
+      showImportResult(copy.syncFailedTitle, copy.syncFailedMessage);
+    } finally {
+      setIsSyncingUpdate(false);
+    }
+  };
+
+  const handleSpecialZipImport = async (includeImages: boolean) => {
+    try {
+      setImportOptionsVisible(false);
+
+      const picked = await pickDocumentBase64('zip');
+      if (!picked) {
+        return;
+      }
+
+      const parsedArchive = await parseImportArchive(picked.base64);
+      if (parsedArchive.entries.length === 0) {
+        showImportResult(
+          copy.noImportableRowsTitle,
+          `${specialZipHelpText}\n\n${copy.specialZipRowsSuffix}`
+        );
+        return;
+      }
+
+      let draftsToImport: EntryDraft[] = parsedArchive.entries.map(stripImportFields);
+      let savedCount = 0;
+      let failedCount = 0;
+      let attachedCount = 0;
+      let imageModeLabel: string = copy.importTextOnlyMode;
+      let extraNotice = '';
+
+      if (includeImages && Platform.OS === 'web') {
+        const hydrated = hydrateArchiveImagesForWeb(parsedArchive.entries);
+        draftsToImport = hydrated.drafts;
+        attachedCount = hydrated.attachedCount;
+        imageModeLabel = copy.browserAttachMode;
+        extraNotice = copy.largeZipNotice;
+      } else if (includeImages) {
+        const hydrated = await hydrateArchiveImagesToLocal(parsedArchive.entries);
+        draftsToImport = hydrated.drafts;
+        savedCount = hydrated.savedCount;
+        failedCount = hydrated.failedCount;
+        imageModeLabel = copy.extractToDeviceMode;
+      }
+
+      const importSummary = await importEntries(draftsToImport);
+      const detailLines = [
+        `${copy.zipFile}: ${picked.asset.name ?? copy.archiveFallbackName}`,
+        `${copy.workbook}: ${parsedArchive.workbookFileName}`,
+        `${copy.addedEntries} ${importSummary.createdCount} ${copy.entries}`,
+        `${copy.updatedEntries} ${importSummary.updatedCount} ${copy.entries}`,
+        `${copy.imageMode}: ${imageModeLabel}`,
+      ];
+
+      if (parsedArchive.matchedCoverCount > 0) {
+        detailLines.push(
+          replaceCount(copy.matchedCoverImages, parsedArchive.matchedCoverCount)
+        );
+      }
+
+      if (savedCount > 0) {
+        detailLines.push(replaceCount(copy.savedCoverImages, savedCount));
+      }
+
+      if (attachedCount > 0) {
+        detailLines.push(replaceCount(copy.attachedCoverImages, attachedCount));
+      }
+
+      if (failedCount > 0) {
+        detailLines.push(
+          replaceCount(copy.failedToSaveCoverImages, failedCount)
+        );
+      }
+
+      if (parsedArchive.skippedCoverCount > 0) {
+        detailLines.push(
+          replaceCount(copy.unmatchedCoverPaths, parsedArchive.skippedCoverCount)
+        );
+      }
+
+      if (parsedArchive.skippedRows > 0) {
+        detailLines.push(
+          replaceCount(copy.skippedRowsWithoutTitle, parsedArchive.skippedRows)
+        );
+      }
+
+      if (extraNotice) {
+        detailLines.push(extraNotice);
+      }
+
+      showImportResult(
+        copy.specialZipImportCompleteTitle,
+        detailLines.join('\n')
+      );
+    } catch (error) {
+      showImportResult(
+        copy.specialZipImportFailedTitle,
+        `${copy.specialZipImportFailedMessage}\n\n${getReadableErrorMessage(
+          error,
+          language
+        )}`
+      );
+    }
+  };
+
+  const listHeader = (
+    <>
+      <ScreenHeader
+        title={copy.appTitle}
+        subtitle={copy.appSubtitle}
+        totalEntriesText={totalEntriesText}
+        isFormVisible={isFormVisible}
+        isImporting={isSaving}
+        isSyncing={isSyncingUpdate}
+        isClearing={isSaving}
+        language={language}
+        onLanguageChange={changeLanguage}
+        onToggleForm={handleToggleForm}
+        onImportPress={() => setImportOptionsVisible(true)}
+        onSyncPress={handleSyncUpdate}
+        onClearPress={handleClearLibrary}
+      />
+
+      <SearchBar
+        value={searchText}
+        onChangeText={setSearchText}
+        resultCount={filteredEntries.length}
+        sortOption={sortOption}
+        onChangeSort={setSortOption}
+        language={language}
+      />
+
+      {isFormVisible ? (
+        <EntryForm
+          mode={isEditing ? 'edit' : 'create'}
+          values={formValues}
+          isSaving={isSaving}
+          language={language}
+          onChange={handleChangeForm}
+          onSubmit={handleSubmit}
+          onCancel={resetForm}
+          onPickImage={handleOpenImageOptions}
+          onClearImage={() =>
+            setFormValues((current) => ({
+              ...current,
+              localImageUri: null,
+              coverImage: '',
+            }))
+          }
+        />
+      ) : null}
+
+      <View style={styles.sectionHeader}>
+        <View>
+          <Text style={styles.sectionTitle}>{copy.library}</Text>
+          <Text style={styles.sectionCaption}>
+            {getSortDescription(sortOption, language)}
+          </Text>
+        </View>
+        <View style={styles.sectionPill}>
+          <Text style={styles.sectionPillText}>
+            {filteredEntries.length} {copy.results.toLowerCase()} ·{' '}
+            {getSortLabel(sortOption, language)}
+          </Text>
+        </View>
+      </View>
+    </>
+  );
+
+  const commonListProps = {
+    ref: listRef,
+    keyboardShouldPersistTaps: 'handled' as const,
+    showsVerticalScrollIndicator: false,
+    contentContainerStyle: styles.listContainer,
+    ListHeaderComponent: listHeader,
+    onScroll: (event: { nativeEvent: { contentOffset: { y: number } } }) =>
+      handleListScroll(event.nativeEvent.contentOffset.y),
+    scrollEventThrottle: 16,
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="dark" />
+
+      <Modal
+        visible={importOptionsVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImportOptionsVisible(false)}
+      >
+        <Pressable
+          style={styles.resultOverlay}
+          onPress={() => setImportOptionsVisible(false)}
+        >
+          <Pressable style={styles.resultCard}>
+            <View style={styles.secretTitleRow}>
+              <Text style={styles.resultTitle}>{copy.importTitle}</Text>
+              <TouchableOpacity onPress={handleExcelSecretTap} activeOpacity={0.8}>
+                <Text style={[styles.resultTitle, styles.secretWord]}>Excel</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.resultMessage}>
+              {supportedColumnsText}
+              {'\n\n'}
+              {copy.exampleRow}
+              {'\n'}
+              {copy.supportedColumns[0]} = Solo Login
+              {'\n'}
+              {copy.supportedColumns[1]} = https://example.com/cover.jpg
+              {'\n'}
+              {copy.supportedColumns[2]} = 109
+              {'\n'}
+              {copy.supportedColumns[3]} = https://example.com/ch-109
+              {'\n\n'}
+              {copy.tip}
+              {'\n'}- {copy.importTipUrl}
+              {'\n'}- {copy.importTipZip}
+            </Text>
+
+            <View style={styles.importOptionGroup}>
+              <TouchableOpacity
+                style={styles.resultButton}
+                onPress={() => handleImportWorkbook(false)}
+              >
+                <Text style={styles.resultButtonText}>{copy.importTextOnly}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.resultButton, styles.secondaryResultButton]}
+                onPress={() => handleImportWorkbook(true)}
+              >
+                <Text style={styles.resultButtonText}>
+                  {copy.importWithImageUrls}
+                </Text>
+              </TouchableOpacity>
+
+              {specialImportUnlocked ? (
+                <View style={styles.secretPanel}>
+                  <Text style={styles.secretPanelTitle}>{copy.specialZipTitle}</Text>
+                  <Text style={styles.secretPanelText}>
+                    {copy.specialZipDescription}
+                  </Text>
+
+                  <TouchableOpacity
+                    style={[styles.resultButton, styles.secretActionButton]}
+                    onPress={() => handleSpecialZipImport(false)}
+                  >
+                    <Text style={styles.resultButtonText}>{copy.zipTextOnly}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.resultButton, styles.downloadResultButton]}
+                    onPress={() => handleSpecialZipImport(true)}
+                  >
+                    <Text style={styles.resultButtonText}>
+                      {copy.zipWithImages}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.cancelResultButton}
+                onPress={() => setImportOptionsVisible(false)}
+              >
+                <Text style={styles.cancelResultButtonText}>{copy.cancel}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={importResult.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() =>
+          setImportResult((current) => ({ ...current, visible: false }))
+        }
+      >
+        <Pressable
+          style={styles.resultOverlay}
+          onPress={() =>
+            setImportResult((current) => ({ ...current, visible: false }))
+          }
+        >
+          <Pressable style={styles.resultCard}>
+            <Text style={styles.resultTitle}>{importResult.title}</Text>
+            <Text style={styles.resultMessage}>{importResult.message}</Text>
+            <TouchableOpacity
+              style={styles.resultButton}
+              onPress={() =>
+                setImportResult((current) => ({ ...current, visible: false }))
+              }
+            >
+              <Text style={styles.resultButtonText}>{copy.ok}</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.backgroundBlobTop} />
+        <View style={styles.backgroundBlobBottom} />
+
+        <View style={styles.container}>
+          {isLoading ? (
+            <View style={styles.loaderContainer}>
+              <View style={styles.loaderCard}>
+                <ActivityIndicator size="large" color={AppTheme.colors.primary} />
+                <Text style={styles.loaderTitle}>{copy.loadingLibrary}</Text>
+                <Text style={styles.loaderText}>{copy.loadingLibraryText}</Text>
+              </View>
+            </View>
+          ) : filteredEntries.length === 0 ? (
+            <FlatList
+              {...commonListProps}
+              data={[] as Entry[]}
+              keyExtractor={(_, index) => `empty-${index}`}
+              renderItem={() => null}
+              ListEmptyComponent={
+                <EmptyState
+                  title={
+                    entries.length === 0
+                      ? copy.noComicsSaved
+                      : copy.noMatchingResults
+                  }
+                  description={
+                    entries.length === 0
+                      ? copy.emptyDescription
+                      : copy.noResultsDescription
+                  }
+                  actionLabel={
+                    entries.length === 0 ? copy.addFirstEntry : copy.clearSearch
+                  }
+                  onActionPress={
+                    entries.length === 0
+                      ? showCreateForm
+                      : () => {
+                          setSearchText('');
+                        }
+                  }
+                />
+              }
+            />
+          ) : (
+            <FlatList
+              {...commonListProps}
+              data={filteredEntries}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View style={styles.cardWrapper}>
+                  <EntryCard
+                    entry={item}
+                    language={language}
+                    onEdit={startEditEntry}
+                    onDelete={handleDelete}
+                    onOpenLink={(url) => openEntryLink(url, language)}
+                  />
+                </View>
+              )}
+            />
+          )}
+        </View>
+
+        {showScrollTopButton ? (
+          <TouchableOpacity
+            style={styles.scrollTopButton}
+            onPress={scrollToTop}
+            activeOpacity={0.92}
+            accessibilityRole="button"
+            accessibilityLabel={copy.toTop}
+          >
+            <Text style={styles.scrollTopButtonIcon}>↑</Text>
+          </TouchableOpacity>
+        ) : null}
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: AppTheme.colors.background,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+    backgroundColor: AppTheme.colors.background,
+  },
+  backgroundBlobTop: {
+    position: 'absolute',
+    top: -80,
+    right: -50,
+    width: 220,
+    height: 220,
+    borderRadius: 999,
+    backgroundColor: AppTheme.colors.backgroundAccent,
+  },
+  backgroundBlobBottom: {
+    position: 'absolute',
+    bottom: -90,
+    left: -70,
+    width: 240,
+    height: 240,
+    borderRadius: 999,
+    backgroundColor: '#E9DDD1',
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 18,
+    paddingTop: Platform.select({ ios: 10, android: 16, default: 16 }),
+    paddingBottom: 18,
+  },
+  sectionHeader: {
+    marginBottom: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 2,
+  },
+  sectionCaption: {
+    fontSize: 13,
+    color: AppTheme.colors.textMuted,
+  },
+  sectionPill: {
+    backgroundColor: AppTheme.colors.surfaceRaised,
+    borderRadius: AppTheme.radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+  },
+  sectionPillText: {
+    fontSize: 12,
+    color: AppTheme.colors.textSecondary,
+    fontWeight: '800',
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderCard: {
+    minWidth: 240,
+    backgroundColor: AppTheme.colors.surfaceRaised,
+    borderRadius: AppTheme.radius.lg,
+    padding: 26,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+    shadowColor: AppTheme.colors.shadow,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  loaderTitle: {
+    marginTop: 14,
+    fontSize: 18,
+    color: AppTheme.colors.textPrimary,
+    fontWeight: '900',
+  },
+  loaderText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: AppTheme.colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  listContainer: {
+    paddingBottom: 96,
+  },
+  cardWrapper: {
+    marginBottom: 14,
+  },
+  resultOverlay: {
+    flex: 1,
+    backgroundColor: AppTheme.colors.overlay,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+  },
+  resultCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: AppTheme.colors.surfaceRaised,
+    borderRadius: AppTheme.radius.lg,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+    padding: 20,
+    shadowColor: AppTheme.colors.shadow,
+    shadowOpacity: 0.16,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  resultTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 10,
+  },
+  resultMessage: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: AppTheme.colors.textSecondary,
+    marginBottom: 18,
+  },
+  resultButton: {
+    backgroundColor: AppTheme.colors.primary,
+    borderRadius: AppTheme.radius.md,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  resultButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  importOptionGroup: {
+    gap: 10,
+  },
+  secondaryResultButton: {
+    backgroundColor: AppTheme.colors.secondary,
+  },
+  downloadResultButton: {
+    backgroundColor: AppTheme.colors.success,
+  },
+  cancelResultButton: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  cancelResultButtonText: {
+    color: AppTheme.colors.textMuted,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  secretTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  secretWord: {
+    color: AppTheme.colors.primaryDark,
+    textDecorationLine: 'underline',
+  },
+  secretPanel: {
+    marginTop: 6,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: AppTheme.colors.border,
+    gap: 10,
+  },
+  secretPanelTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: AppTheme.colors.textPrimary,
+  },
+  secretPanelText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: AppTheme.colors.textSecondary,
+  },
+  secretActionButton: {
+    backgroundColor: '#7A5A46',
+  },
+  scrollTopButton: {
+    position: 'absolute',
+    right: 18,
+    bottom: Platform.select({ ios: 34, android: 96, default: 34 }),
+    width: 58,
+    height: 58,
+    backgroundColor: 'rgba(255, 253, 249, 0.96)',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: AppTheme.colors.shadow,
+    shadowOpacity: 0.14,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  scrollTopButtonIcon: {
+    color: AppTheme.colors.primaryDark,
+    fontSize: 24,
+    fontWeight: '900',
+  },
+});

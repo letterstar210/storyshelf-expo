@@ -2,7 +2,6 @@
   "name": "reading-mobile-working",
   "version": "1.0.0",
   "main": "node_modules/expo/AppEntry.js",
-  "description": "StoryShelf is a bilingual reading tracker for comics, manga, manhwa, and web novels, built with Expo, React Native, and TypeScript.",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",

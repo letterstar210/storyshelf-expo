@@ -5,11 +5,11 @@ const translations = {
     languageLabel: 'Language',
     thai: 'ไทย',
     english: 'EN',
-    libraryBadge: 'READING DASHBOARD',
+    libraryBadge: 'LOCAL LIBRARY',
     total: 'Total',
-    headerNoteTitle: 'What it offers',
+    headerNoteTitle: 'Quick note',
     headerNoteText:
-      'Organize comics, manga, manhwa, and web novels in one place. Add titles manually, import larger libraries from spreadsheets, and keep the app updated through OTA delivery.',
+      'Add a new series, update the latest chapter, import from a spreadsheet or ZIP archive, sync OTA updates, or clear the library for a fresh upload.',
     importExcel: 'Import Excel',
     importing: 'Importing...',
     syncOta: 'Sync OTA',
@@ -18,9 +18,9 @@ const translations = {
     clearing: 'Clearing...',
     closeForm: 'Close form',
     addEntry: 'Add entry',
-    appTitle: 'StoryShelf',
+    appTitle: 'Comic Reading Tracker',
     appSubtitle:
-      'A bilingual reading tracker for comics and web novels with clean organization, quick progress updates, and bulk import support.',
+      'Keep every comic in one place, track the latest chapter, and import large libraries with a cleaner workflow.',
     searchPlaceholder:
       'Search by title, chapter, or anything you want to find again',
     results: 'Results',
@@ -206,11 +206,11 @@ const translations = {
     languageLabel: 'ภาษา',
     thai: 'ไทย',
     english: 'EN',
-    libraryBadge: 'แดชบอร์ดการอ่าน',
+    libraryBadge: 'คลังในเครื่อง',
     total: 'ทั้งหมด',
-    headerNoteTitle: 'จุดเด่นของแอพ',
+    headerNoteTitle: 'โน้ตสั้น ๆ',
     headerNoteText:
-      'จัดการการ์ตูน มังงะ มันฮวา และเว็บโนเวลไว้ในที่เดียว เพิ่มรายการเองได้ นำเข้าคลังขนาดใหญ่จากสเปรดชีตได้ และอัปเดตแอพผ่าน OTA ได้สะดวก',
+      'เพิ่มเรื่องใหม่ อัปเดตตอนล่าสุด นำเข้าจากสเปรดชีตหรือ ZIP ซิงก์ OTA หรือเคลียร์คลังเพื่ออัปโหลดใหม่ได้ในที่เดียว',
     importExcel: 'นำเข้า Excel',
     importing: 'กำลังนำเข้า...',
     syncOta: 'ซิงก์ OTA',
@@ -219,9 +219,9 @@ const translations = {
     clearing: 'กำลังล้าง...',
     closeForm: 'ปิดฟอร์ม',
     addEntry: 'เพิ่มรายการ',
-    appTitle: 'StoryShelf',
+    appTitle: 'ตัวติดตามการอ่านการ์ตูน',
     appSubtitle:
-      'แอพติดตามการอ่านสองภาษาสำหรับการ์ตูนและเว็บโนเวล พร้อมการจัดการที่เป็นระเบียบ อัปเดตตอนล่าสุดได้ไว และรองรับการนำเข้าทีละมาก ๆ',
+      'เก็บการ์ตูนทั้งหมดไว้ที่เดียว ติดตามตอนล่าสุด และนำเข้าคลังขนาดใหญ่ได้ง่ายขึ้น',
     searchPlaceholder:
       'ค้นหาจากชื่อเรื่อง ตอน หรืออะไรก็ตามที่อยากกลับมาดูอีกครั้ง',
     results: 'ผลลัพธ์',

@@ -46,6 +46,13 @@ export const EntryForm = ({
 }: EntryFormProps) => {
   const copy = getCopy(language);
   const previewUri = values.localImageUri || values.coverImage;
+  const autofillDisabledProps = {
+    autoComplete: 'off' as const,
+    textContentType: 'none' as const,
+    importantForAutofill: 'no' as const,
+    autoCorrect: false,
+    spellCheck: false,
+  };
 
   return (
     <View style={styles.card}>
@@ -98,6 +105,7 @@ export const EntryForm = ({
       </View>
 
       <TextInput
+        {...autofillDisabledProps}
         style={styles.input}
         placeholder={copy.coverUrlOptional}
         placeholderTextColor={AppTheme.colors.placeholder}
@@ -113,6 +121,7 @@ export const EntryForm = ({
       />
 
       <TextInput
+        {...autofillDisabledProps}
         style={styles.input}
         placeholder={copy.titleRequired}
         placeholderTextColor={AppTheme.colors.placeholder}
@@ -121,6 +130,7 @@ export const EntryForm = ({
       />
 
       <TextInput
+        {...autofillDisabledProps}
         style={styles.input}
         placeholder={copy.latestChapterEpisode}
         placeholderTextColor={AppTheme.colors.placeholder}
@@ -129,6 +139,7 @@ export const EntryForm = ({
       />
 
       <TextInput
+        {...autofillDisabledProps}
         style={styles.input}
         placeholder={copy.readingLink}
         placeholderTextColor={AppTheme.colors.placeholder}

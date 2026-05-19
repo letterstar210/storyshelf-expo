@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "StoryShelf",
-    "slug": "storyshelf",
+    "name": "Comic Reading Tracker",
+    "slug": "reading-mobile-working",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -9,6 +9,11 @@
     "newArchEnabled": true,
     "runtimeVersion": {
       "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/99d04c97-35ac-4277-8cec-bbe95581dfea",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     },
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -29,6 +34,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "99d04c97-35ac-4277-8cec-bbe95581dfea"
+      }
+    },
+    "owner": "letterstar"
   }
 }

@@ -50,6 +50,13 @@ export const SearchBar = ({
     left: 0,
     width: DROPDOWN_WIDTH,
   });
+  const autofillDisabledProps = {
+    autoComplete: 'off' as const,
+    textContentType: 'none' as const,
+    importantForAutofill: 'no' as const,
+    autoCorrect: false,
+    spellCheck: false,
+  };
 
   const handleToggleDropdown = () => {
     if (isDropdownVisible) {
@@ -86,6 +93,7 @@ export const SearchBar = ({
             <Text style={styles.searchIcon}>⌕</Text>
           </View>
           <TextInput
+            {...autofillDisabledProps}
             style={styles.input}
             placeholder={copy.searchPlaceholder}
             placeholderTextColor={AppTheme.colors.placeholder}

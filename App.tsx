@@ -9,6 +9,7 @@ import {
   Platform,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -816,6 +817,26 @@ export default function App() {
     }
   };
 
+  const entryFormElement = (
+    <EntryForm
+      mode={isEditing ? 'edit' : 'create'}
+      values={formValues}
+      isSaving={isSaving}
+      language={language}
+      onChange={handleChangeForm}
+      onSubmit={handleSubmit}
+      onCancel={resetForm}
+      onPickImage={handleOpenImageOptions}
+      onClearImage={() =>
+        setFormValues((current) => ({
+          ...current,
+          localImageUri: null,
+          coverImage: '',
+        }))
+      }
+    />
+  );
+
   const listHeader = (
     <>
       <ScreenHeader
@@ -874,40 +895,6 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
-
-      <Modal
-        visible={isFormVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={resetForm}
-      >
-        <KeyboardAvoidingView
-          style={styles.formOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <Pressable style={styles.formBackdrop} onPress={resetForm}>
-            <Pressable style={styles.formModalContent}>
-              <EntryForm
-                mode={isEditing ? 'edit' : 'create'}
-                values={formValues}
-                isSaving={isSaving}
-                language={language}
-                onChange={handleChangeForm}
-                onSubmit={handleSubmit}
-                onCancel={resetForm}
-                onPickImage={handleOpenImageOptions}
-                onClearImage={() =>
-                  setFormValues((current) => ({
-                    ...current,
-                    localImageUri: null,
-                    coverImage: '',
-                  }))
-                }
-              />
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
 
       <Modal
         visible={importOptionsVisible}
@@ -1043,6 +1030,26 @@ export default function App() {
                 <Text style={styles.loaderText}>{copy.loadingLibraryText}</Text>
               </View>
             </View>
+          ) : isFormVisible ? (
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.formScreenContainer}
+            >
+              <View style={styles.formScreenHeader}>
+                <TouchableOpacity
+                  style={styles.formScreenCloseButton}
+                  onPress={resetForm}
+                  activeOpacity={0.88}
+                >
+                  <Text style={styles.formScreenCloseButtonText}>
+                    {copy.closeForm}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {entryFormElement}
+            </ScrollView>
           ) : filteredEntries.length === 0 ? (
             <FlatList
               {...commonListProps}
@@ -1094,7 +1101,7 @@ export default function App() {
           )}
         </View>
 
-        {showScrollTopButton ? (
+        {showScrollTopButton && !isFormVisible ? (
           <TouchableOpacity
             style={styles.scrollTopButton}
             onPress={scrollToTop}
@@ -1218,20 +1225,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 22,
   },
-  formOverlay: {
-    flex: 1,
+  formScreenContainer: {
+    paddingBottom: 34,
   },
-  formBackdrop: {
-    flex: 1,
-    backgroundColor: AppTheme.colors.overlay,
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 22,
+  formScreenHeader: {
+    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
-  formModalContent: {
-    width: '100%',
-    maxWidth: 460,
-    alignSelf: 'center',
+  formScreenCloseButton: {
+    borderRadius: AppTheme.radius.pill,
+    backgroundColor: AppTheme.colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  formScreenCloseButtonText: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '800',
   },
   resultCard: {
     width: '100%',

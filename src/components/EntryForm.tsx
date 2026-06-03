@@ -48,12 +48,21 @@ export const EntryForm = ({
   const copy = getCopy(language);
   const previewUri = values.localImageUri || values.coverImage;
   const formRef = useRef<View | null>(null);
-  const autofillDisabledProps = {
+  const genericInputProps = {
     autoComplete: 'off' as const,
     textContentType: 'none' as const,
-    importantForAutofill: 'noExcludeDescendants' as const,
+    importantForAutofill: 'no' as const,
     autoCorrect: false,
     spellCheck: false,
+    disableFullscreenUI: true,
+    returnKeyType: 'next' as const,
+    enterKeyHint: 'next' as const,
+  };
+  const urlInputProps = {
+    ...genericInputProps,
+    autoComplete: 'url' as const,
+    textContentType: 'URL' as const,
+    keyboardType: 'url' as const,
   };
 
   useEffect(() => {
@@ -131,12 +140,13 @@ export const EntryForm = ({
       </View>
 
       <TextInput
-        {...autofillDisabledProps}
+        {...urlInputProps}
         style={styles.input}
         placeholder={copy.coverUrlOptional}
         placeholderTextColor={AppTheme.colors.placeholder}
         value={values.coverImage}
         autoCapitalize="none"
+        nativeID="entry-cover-url"
         onChangeText={(text) => {
           onChange('coverImage', text);
 
@@ -147,31 +157,36 @@ export const EntryForm = ({
       />
 
       <TextInput
-        {...autofillDisabledProps}
+        {...genericInputProps}
         style={styles.input}
         placeholder={copy.titleRequired}
         placeholderTextColor={AppTheme.colors.placeholder}
         value={values.title}
+        autoCapitalize="words"
+        nativeID="entry-title"
         onChangeText={(text) => onChange('title', text)}
       />
 
       <TextInput
-        {...autofillDisabledProps}
+        {...genericInputProps}
         style={styles.input}
         placeholder={copy.latestChapterEpisode}
         placeholderTextColor={AppTheme.colors.placeholder}
         value={values.episode}
+        nativeID="entry-episode"
         onChangeText={(text) => onChange('episode', text)}
       />
 
       <TextInput
-        {...autofillDisabledProps}
+        {...urlInputProps}
         style={styles.input}
         placeholder={copy.readingLink}
         placeholderTextColor={AppTheme.colors.placeholder}
         value={values.link}
         autoCapitalize="none"
-        keyboardType="url"
+        returnKeyType="done"
+        enterKeyHint="done"
+        nativeID="entry-link"
         onChangeText={(text) => onChange('link', text)}
       />
 

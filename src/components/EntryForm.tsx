@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -46,16 +47,41 @@ export const EntryForm = ({
 }: EntryFormProps) => {
   const copy = getCopy(language);
   const previewUri = values.localImageUri || values.coverImage;
+  const formRef = useRef<View | null>(null);
   const autofillDisabledProps = {
     autoComplete: 'off' as const,
     textContentType: 'none' as const,
-    importantForAutofill: 'no' as const,
+    importantForAutofill: 'noExcludeDescendants' as const,
     autoCorrect: false,
     spellCheck: false,
   };
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
+    const formElement = formRef.current as unknown as HTMLElement | null;
+    const inputs = formElement?.querySelectorAll?.('input, textarea');
+
+    if (!inputs?.length) {
+      return;
+    }
+
+    inputs.forEach((input, index) => {
+      input.setAttribute('autocomplete', 'off');
+      input.setAttribute('autocorrect', 'off');
+      input.setAttribute('autocapitalize', 'off');
+      input.setAttribute('spellcheck', 'false');
+      input.setAttribute('name', `reading-entry-field-${index + 1}`);
+      input.setAttribute('data-form-type', 'other');
+      input.setAttribute('data-lpignore', 'true');
+      input.setAttribute('data-1p-ignore', 'true');
+    });
+  }, [mode]);
+
   return (
-    <View style={styles.card}>
+    <View ref={formRef} style={styles.card}>
       <View style={styles.header}>
         <View>
           <Text style={styles.caption}>

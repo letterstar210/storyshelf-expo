@@ -843,26 +843,6 @@ export default function App() {
         language={language}
       />
 
-      {isFormVisible ? (
-        <EntryForm
-          mode={isEditing ? 'edit' : 'create'}
-          values={formValues}
-          isSaving={isSaving}
-          language={language}
-          onChange={handleChangeForm}
-          onSubmit={handleSubmit}
-          onCancel={resetForm}
-          onPickImage={handleOpenImageOptions}
-          onClearImage={() =>
-            setFormValues((current) => ({
-              ...current,
-              localImageUri: null,
-              coverImage: '',
-            }))
-          }
-        />
-      ) : null}
-
       <View style={styles.sectionHeader}>
         <View>
           <Text style={styles.sectionTitle}>{copy.library}</Text>
@@ -894,6 +874,40 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
+
+      <Modal
+        visible={isFormVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={resetForm}
+      >
+        <KeyboardAvoidingView
+          style={styles.formOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Pressable style={styles.formBackdrop} onPress={resetForm}>
+            <Pressable style={styles.formModalContent}>
+              <EntryForm
+                mode={isEditing ? 'edit' : 'create'}
+                values={formValues}
+                isSaving={isSaving}
+                language={language}
+                onChange={handleChangeForm}
+                onSubmit={handleSubmit}
+                onCancel={resetForm}
+                onPickImage={handleOpenImageOptions}
+                onClearImage={() =>
+                  setFormValues((current) => ({
+                    ...current,
+                    localImageUri: null,
+                    coverImage: '',
+                  }))
+                }
+              />
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <Modal
         visible={importOptionsVisible}
@@ -1203,6 +1217,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 22,
+  },
+  formOverlay: {
+    flex: 1,
+  },
+  formBackdrop: {
+    flex: 1,
+    backgroundColor: AppTheme.colors.overlay,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 22,
+  },
+  formModalContent: {
+    width: '100%',
+    maxWidth: 460,
+    alignSelf: 'center',
   },
   resultCard: {
     width: '100%',

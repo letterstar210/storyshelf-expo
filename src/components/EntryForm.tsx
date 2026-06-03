@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -48,6 +48,7 @@ export const EntryForm = ({
   const copy = getCopy(language);
   const previewUri = values.localImageUri || values.coverImage;
   const formRef = useRef<View | null>(null);
+  const [showOptionalLinks, setShowOptionalLinks] = useState(false);
   const genericInputProps = {
     autoComplete: 'off' as const,
     textContentType: 'none' as const,
@@ -64,6 +65,22 @@ export const EntryForm = ({
     textContentType: 'URL' as const,
     keyboardType: 'url' as const,
   };
+  const optionalLinkCount =
+    Number(Boolean(values.coverImage.trim())) + Number(Boolean(values.link.trim()));
+  const optionalLinksLabel =
+    language === 'th' ? 'ตัวเลือกเพิ่มเติม' : 'Optional links';
+  const showOptionalLinksLabel =
+    language === 'th' ? 'แสดงช่องลิงก์เพิ่มเติม' : 'Show optional links';
+  const hideOptionalLinksLabel =
+    language === 'th' ? 'ซ่อนช่องลิงก์เพิ่มเติม' : 'Hide optional links';
+  const savedOptionalLinksLabel =
+    language === 'th'
+      ? `บันทึกลิงก์เพิ่มเติมไว้ ${optionalLinkCount} รายการ`
+      : `Saved optional links: ${optionalLinkCount}`;
+  const emptyCoverLabelText =
+    language === 'th'
+      ? 'เลือกรูปก่อน หรือเปิดตัวเลือกเพิ่มเติมเพื่อวางลิงก์รูปปก'
+      : 'Choose an image first, or open optional links to paste a cover URL.';
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -131,30 +148,11 @@ export const EntryForm = ({
           ) : (
             <View style={styles.emptyPreview}>
               <Text style={styles.emptyPreviewTitle}>{copy.noCoverSelected}</Text>
-              <Text style={styles.emptyPreviewText}>
-                {copy.noCoverSelectedText}
-              </Text>
+              <Text style={styles.emptyPreviewText}>{emptyCoverLabelText}</Text>
             </View>
           )}
         </View>
       </View>
-
-      <TextInput
-        {...urlInputProps}
-        style={styles.input}
-        placeholder={copy.coverUrlOptional}
-        placeholderTextColor={AppTheme.colors.placeholder}
-        value={values.coverImage}
-        autoCapitalize="none"
-        nativeID="entry-cover-url"
-        onChangeText={(text) => {
-          onChange('coverImage', text);
-
-          if (text.trim()) {
-            onChange('localImageUri', null);
-          }
-        }}
-      />
 
       <TextInput
         {...genericInputProps}
@@ -177,18 +175,63 @@ export const EntryForm = ({
         onChangeText={(text) => onChange('episode', text)}
       />
 
-      <TextInput
-        {...urlInputProps}
-        style={styles.input}
-        placeholder={copy.readingLink}
-        placeholderTextColor={AppTheme.colors.placeholder}
-        value={values.link}
-        autoCapitalize="none"
-        returnKeyType="done"
-        enterKeyHint="done"
-        nativeID="entry-link"
-        onChangeText={(text) => onChange('link', text)}
-      />
+      <View style={styles.optionalLinksPanel}>
+        <View style={styles.optionalLinksHeader}>
+          <View>
+            <Text style={styles.optionalLinksTitle}>{optionalLinksLabel}</Text>
+            {optionalLinkCount > 0 ? (
+              <Text style={styles.optionalLinksNote}>
+                {savedOptionalLinksLabel}
+              </Text>
+            ) : null}
+          </View>
+
+          <TouchableOpacity
+            style={styles.optionalLinksToggle}
+            onPress={() => setShowOptionalLinks((current) => !current)}
+          >
+            <Text style={styles.optionalLinksToggleText}>
+              {showOptionalLinks
+                ? hideOptionalLinksLabel
+                : showOptionalLinksLabel}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {showOptionalLinks ? (
+          <>
+            <TextInput
+              {...urlInputProps}
+              style={styles.input}
+              placeholder={copy.coverUrlOptional}
+              placeholderTextColor={AppTheme.colors.placeholder}
+              value={values.coverImage}
+              autoCapitalize="none"
+              nativeID="entry-cover-url"
+              onChangeText={(text) => {
+                onChange('coverImage', text);
+
+                if (text.trim()) {
+                  onChange('localImageUri', null);
+                }
+              }}
+            />
+
+            <TextInput
+              {...urlInputProps}
+              style={styles.input}
+              placeholder={copy.readingLink}
+              placeholderTextColor={AppTheme.colors.placeholder}
+              value={values.link}
+              autoCapitalize="none"
+              returnKeyType="done"
+              enterKeyHint="done"
+              nativeID="entry-link"
+              onChangeText={(text) => onChange('link', text)}
+            />
+          </>
+        ) : null}
+      </View>
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
@@ -337,6 +380,44 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: AppTheme.colors.textPrimary,
     marginBottom: 12,
+  },
+  optionalLinksPanel: {
+    backgroundColor: AppTheme.colors.background,
+    borderRadius: AppTheme.radius.md,
+    borderWidth: 1,
+    borderColor: '#E4D4C5',
+    padding: 14,
+    marginBottom: 12,
+  },
+  optionalLinksHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  optionalLinksTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: AppTheme.colors.textPrimary,
+  },
+  optionalLinksNote: {
+    marginTop: 4,
+    fontSize: 12,
+    color: AppTheme.colors.textMuted,
+  },
+  optionalLinksToggle: {
+    borderRadius: AppTheme.radius.pill,
+    backgroundColor: AppTheme.colors.surfaceMuted,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+  },
+  optionalLinksToggleText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: AppTheme.colors.primaryDark,
+    textAlign: 'center',
   },
   footer: {
     flexDirection: 'row',

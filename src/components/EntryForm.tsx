@@ -1,9 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-  KeyboardAvoidingView,
-  Modal,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -31,6 +28,7 @@ interface EntryFormProps {
     key: K,
     value: EntryFormValues[K]
   ) => void;
+  onFocusField?: (target: number | null) => void;
   onSubmit: () => void;
   onCancel: () => void;
   onPickImage: () => void;
@@ -43,6 +41,7 @@ export const EntryForm = ({
   isSaving,
   language,
   onChange,
+  onFocusField,
   onSubmit,
   onCancel,
   onPickImage,
@@ -51,8 +50,6 @@ export const EntryForm = ({
   const copy = getCopy(language);
   const previewUri = values.localImageUri || values.coverImage;
   const formRef = useRef<View | null>(null);
-  const [activeLinkField, setActiveLinkField] = useState<'coverImage' | 'link' | null>(null);
-  const [linkDraftValue, setLinkDraftValue] = useState('');
   const genericInputProps = {
     autoComplete: 'off' as const,
     textContentType: 'none' as const,
@@ -65,41 +62,8 @@ export const EntryForm = ({
   };
   const urlInputProps = {
     ...genericInputProps,
-    returnKeyType: 'done' as const,
-    enterKeyHint: 'done' as const,
+    autoCapitalize: 'none' as const,
   };
-  const optionalLinkCount =
-    Number(Boolean(values.coverImage.trim())) + Number(Boolean(values.link.trim()));
-  const optionalLinksLabel =
-    language === 'th' ? 'ตัวเลือกเพิ่มเติม' : 'Optional links';
-  const showOptionalLinksLabel =
-    language === 'th' ? 'แสดงช่องลิงก์เพิ่มเติม' : 'Show optional links';
-  const hideOptionalLinksLabel =
-    language === 'th' ? 'ซ่อนช่องลิงก์เพิ่มเติม' : 'Hide optional links';
-  const savedOptionalLinksLabel =
-    language === 'th'
-      ? `บันทึกลิงก์เพิ่มเติมไว้ ${optionalLinkCount} รายการ`
-      : `Saved optional links: ${optionalLinkCount}`;
-  const emptyCoverLabelText =
-    language === 'th'
-      ? 'เลือกรูปก่อน หรือเปิดตัวเลือกเพิ่มเติมเพื่อวางลิงก์รูปปก'
-      : 'Choose an image first, or open optional links to paste a cover URL.';
-  const coverLinkLabel =
-    language === 'th' ? 'ลิงก์รูปปก (ถ้ามี)' : 'Cover URL (optional)';
-  const readingLinkLabel =
-    language === 'th' ? 'ลิงก์สำหรับอ่าน' : 'Reading link';
-  const addCoverLinkLabel =
-    language === 'th' ? 'เพิ่มลิงก์รูปปก' : 'Add cover link';
-  const addReadingLinkLabel =
-    language === 'th' ? 'เพิ่มลิงก์สำหรับอ่าน' : 'Add reading link';
-  const editLinkLabel =
-    language === 'th' ? 'แก้ไขลิงก์' : 'Edit link';
-  const clearLinkLabel =
-    language === 'th' ? 'ล้างลิงก์' : 'Clear link';
-  const saveLinkLabel =
-    language === 'th' ? 'บันทึกลิงก์' : 'Save link';
-  const linkEditorTitle =
-    activeLinkField === 'coverImage' ? coverLinkLabel : readingLinkLabel;
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -125,83 +89,16 @@ export const EntryForm = ({
     });
   }, [mode]);
 
-  const openLinkEditor = (field: 'coverImage' | 'link') => {
-    setLinkDraftValue(field === 'coverImage' ? values.coverImage : values.link);
-    setActiveLinkField(field);
-  };
-
-  const closeLinkEditor = () => {
-    setActiveLinkField(null);
-    setLinkDraftValue('');
-  };
-
-  const saveLinkEditor = () => {
-    if (!activeLinkField) {
-      return;
-    }
-
-    onChange(activeLinkField, linkDraftValue);
-
-    if (activeLinkField === 'coverImage' && linkDraftValue.trim()) {
-      onChange('localImageUri', null);
-    }
-
-    closeLinkEditor();
-  };
-
-  const clearLinkValue = (field: 'coverImage' | 'link') => {
-    onChange(field, '');
+  const handleInputFocus = (event: {
+    nativeEvent?: {
+      target?: number | null;
+    };
+  }) => {
+    onFocusField?.(event.nativeEvent?.target ?? null);
   };
 
   return (
     <View ref={formRef} style={styles.card}>
-      <Modal
-        visible={activeLinkField !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={closeLinkEditor}
-      >
-        <KeyboardAvoidingView
-          style={styles.linkEditorOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <Pressable style={styles.linkEditorBackdrop} onPress={closeLinkEditor}>
-            <Pressable style={styles.linkEditorCard}>
-              <Text style={styles.linkEditorTitle}>{linkEditorTitle}</Text>
-              <TextInput
-                {...urlInputProps}
-                style={styles.linkEditorInput}
-                placeholder={linkEditorTitle}
-                placeholderTextColor={AppTheme.colors.placeholder}
-                value={linkDraftValue}
-                autoCapitalize="none"
-                nativeID={
-                  activeLinkField === 'coverImage'
-                    ? 'entry-cover-url-editor'
-                    : 'entry-reading-link-editor'
-                }
-                onChangeText={setLinkDraftValue}
-              />
-
-              <View style={styles.linkEditorFooter}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={closeLinkEditor}
-                >
-                  <Text style={styles.cancelButtonText}>{copy.cancel}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.submitButton}
-                  onPress={saveLinkEditor}
-                >
-                  <Text style={styles.submitButtonText}>{saveLinkLabel}</Text>
-                </TouchableOpacity>
-              </View>
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
-
       <View style={styles.header}>
         <View>
           <Text style={styles.caption}>
@@ -242,11 +139,30 @@ export const EntryForm = ({
           ) : (
             <View style={styles.emptyPreview}>
               <Text style={styles.emptyPreviewTitle}>{copy.noCoverSelected}</Text>
-              <Text style={styles.emptyPreviewText}>{emptyCoverLabelText}</Text>
+              <Text style={styles.emptyPreviewText}>
+                {copy.noCoverSelectedText}
+              </Text>
             </View>
           )}
         </View>
       </View>
+
+      <TextInput
+        {...urlInputProps}
+        style={styles.input}
+        placeholder={copy.coverUrlOptional}
+        placeholderTextColor={AppTheme.colors.placeholder}
+        value={values.coverImage}
+        nativeID="entry-cover-url"
+        onFocus={(event) => handleInputFocus(event)}
+        onChangeText={(text) => {
+          onChange('coverImage', text);
+
+          if (text.trim()) {
+            onChange('localImageUri', null);
+          }
+        }}
+      />
 
       <TextInput
         {...genericInputProps}
@@ -256,6 +172,7 @@ export const EntryForm = ({
         value={values.title}
         autoCapitalize="words"
         nativeID="entry-title"
+        onFocus={(event) => handleInputFocus(event)}
         onChangeText={(text) => onChange('title', text)}
       />
 
@@ -266,77 +183,22 @@ export const EntryForm = ({
         placeholderTextColor={AppTheme.colors.placeholder}
         value={values.episode}
         nativeID="entry-episode"
+        onFocus={(event) => handleInputFocus(event)}
         onChangeText={(text) => onChange('episode', text)}
       />
 
-      <View style={styles.optionalLinksPanel}>
-        <View style={styles.optionalLinksHeader}>
-          <View>
-            <Text style={styles.optionalLinksTitle}>{optionalLinksLabel}</Text>
-            {optionalLinkCount > 0 ? (
-              <Text style={styles.optionalLinksNote}>
-                {savedOptionalLinksLabel}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-
-        <View style={styles.optionalLinkRow}>
-          <View style={styles.optionalLinkBody}>
-            <Text style={styles.optionalLinkLabel}>{coverLinkLabel}</Text>
-            <Text style={styles.optionalLinkValue} numberOfLines={1}>
-              {values.coverImage.trim() || addCoverLinkLabel}
-            </Text>
-          </View>
-          <View style={styles.optionalLinkActions}>
-            <TouchableOpacity
-              style={styles.optionalLinksToggle}
-              onPress={() => openLinkEditor('coverImage')}
-            >
-              <Text style={styles.optionalLinksToggleText}>
-                {values.coverImage.trim() ? editLinkLabel : addCoverLinkLabel}
-              </Text>
-            </TouchableOpacity>
-            {values.coverImage.trim() ? (
-              <TouchableOpacity
-                style={styles.optionalLinkClearButton}
-                onPress={() => clearLinkValue('coverImage')}
-              >
-                <Text style={styles.optionalLinkClearText}>{clearLinkLabel}</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
-
-        <View style={styles.optionalLinkDivider} />
-
-        <View style={styles.optionalLinkRow}>
-          <View style={styles.optionalLinkBody}>
-            <Text style={styles.optionalLinkLabel}>{readingLinkLabel}</Text>
-            <Text style={styles.optionalLinkValue} numberOfLines={1}>
-              {values.link.trim() || addReadingLinkLabel}
-            </Text>
-          </View>
-          <View style={styles.optionalLinkActions}>
-            <TouchableOpacity
-              style={styles.optionalLinksToggle}
-              onPress={() => openLinkEditor('link')}
-            >
-              <Text style={styles.optionalLinksToggleText}>
-                {values.link.trim() ? editLinkLabel : addReadingLinkLabel}
-              </Text>
-            </TouchableOpacity>
-            {values.link.trim() ? (
-              <TouchableOpacity
-                style={styles.optionalLinkClearButton}
-                onPress={() => clearLinkValue('link')}
-              >
-                <Text style={styles.optionalLinkClearText}>{clearLinkLabel}</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
-      </View>
+      <TextInput
+        {...urlInputProps}
+        style={styles.input}
+        placeholder={copy.readingLink}
+        placeholderTextColor={AppTheme.colors.placeholder}
+        value={values.link}
+        nativeID="entry-link"
+        returnKeyType="done"
+        enterKeyHint="done"
+        onFocus={(event) => handleInputFocus(event)}
+        onChangeText={(text) => onChange('link', text)}
+      />
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
@@ -485,119 +347,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: AppTheme.colors.textPrimary,
     marginBottom: 12,
-  },
-  optionalLinksPanel: {
-    backgroundColor: AppTheme.colors.background,
-    borderRadius: AppTheme.radius.md,
-    borderWidth: 1,
-    borderColor: '#E4D4C5',
-    padding: 14,
-    marginBottom: 12,
-  },
-  optionalLinksHeader: {
-    marginBottom: 10,
-  },
-  optionalLinksTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: AppTheme.colors.textPrimary,
-  },
-  optionalLinksNote: {
-    marginTop: 4,
-    fontSize: 12,
-    color: AppTheme.colors.textMuted,
-  },
-  optionalLinksToggle: {
-    borderRadius: AppTheme.radius.pill,
-    backgroundColor: AppTheme.colors.surfaceMuted,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.border,
-  },
-  optionalLinksToggleText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: AppTheme.colors.primaryDark,
-    textAlign: 'center',
-  },
-  optionalLinkRow: {
-    gap: 10,
-  },
-  optionalLinkBody: {
-    gap: 4,
-  },
-  optionalLinkLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: AppTheme.colors.textPrimary,
-  },
-  optionalLinkValue: {
-    fontSize: 13,
-    color: AppTheme.colors.textSecondary,
-  },
-  optionalLinkActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  optionalLinkClearButton: {
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-  },
-  optionalLinkClearText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: AppTheme.colors.danger,
-  },
-  optionalLinkDivider: {
-    height: 1,
-    backgroundColor: AppTheme.colors.border,
-    marginVertical: 12,
-  },
-  linkEditorOverlay: {
-    flex: 1,
-  },
-  linkEditorBackdrop: {
-    flex: 1,
-    backgroundColor: AppTheme.colors.overlay,
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingBottom: Platform.OS === 'android' ? 24 : 18,
-  },
-  linkEditorCard: {
-    backgroundColor: AppTheme.colors.surfaceRaised,
-    borderRadius: AppTheme.radius.lg,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.border,
-    padding: 18,
-    shadowColor: AppTheme.colors.shadow,
-    shadowOpacity: 0.14,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 22,
-    elevation: 8,
-  },
-  linkEditorTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: AppTheme.colors.textPrimary,
-    marginBottom: 12,
-  },
-  linkEditorInput: {
-    backgroundColor: AppTheme.colors.background,
-    borderRadius: AppTheme.radius.md,
-    borderWidth: 1,
-    borderColor: '#E4D4C5',
-    paddingHorizontal: 15,
-    paddingVertical: 15,
-    fontSize: 15,
-    color: AppTheme.colors.textPrimary,
-    marginBottom: 14,
-  },
-  linkEditorFooter: {
-    flexDirection: 'row',
-    gap: 10,
   },
   footer: {
     flexDirection: 'row',

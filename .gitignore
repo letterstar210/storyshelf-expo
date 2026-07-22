@@ -6,6 +6,7 @@ node_modules/
 # Expo
 .expo/
 .expo-web.log
+.codex-remote-attachments/
 dist/
 web-build/
 expo-env.d.ts

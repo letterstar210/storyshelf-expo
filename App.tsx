@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  findNodeHandle,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -13,6 +14,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  UIManager,
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -24,6 +26,11 @@ import * as Updates from 'expo-updates';
 import { EntryCard } from './src/components/EntryCard';
 import { EmptyState } from './src/components/EmptyState';
 import { EntryForm, EntryFormValues } from './src/components/EntryForm';
+import {
+  PageSize,
+  PageSizeSelector,
+  PaginationControls,
+} from './src/components/PaginationControls';
 import { ScreenHeader } from './src/components/ScreenHeader';
 import { SearchBar } from './src/components/SearchBar';
 import {
@@ -55,6 +62,7 @@ import { parseWorkbookEntries } from './src/utils/importWorkbook';
 import { openEntryLink } from './src/utils/linking';
 
 const LANGUAGE_STORAGE_KEY = 'app_language';
+const PAGE_SIZE_STORAGE_KEY = 'library_page_size';
 
 const EMPTY_FORM: EntryFormValues = {
   title: '',
@@ -199,6 +207,8 @@ export default function App() {
   const [language, setLanguage] = useState<AppLanguage>('th');
   const [searchText, setSearchText] = useState('');
   const [sortOption, setSortOption] = useState<EntrySortOption>('latest');
+  const [pageSize, setPageSize] = useState<PageSize>(20);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const [formValues, setFormValues] = useState<EntryFormValues>(EMPTY_FORM);
@@ -214,6 +224,7 @@ export default function App() {
   });
 
   const listRef = useRef<FlatList<Entry> | null>(null);
+  const formScrollRef = useRef<ScrollView | null>(null);
   const copy = useMemo(() => getCopy(language), [language]);
   const totalEntriesText = `${entries.length} ${copy.entries}`;
 
@@ -239,14 +250,22 @@ export default function App() {
     () => sortEntries(filterEntries(entries, searchText), sortOption),
     [entries, searchText, sortOption]
   );
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / pageSize));
+  const paginatedEntries = useMemo(() => {
+    const firstEntryIndex = (currentPage - 1) * pageSize;
+    return filteredEntries.slice(firstEntryIndex, firstEntryIndex + pageSize);
+  }, [currentPage, filteredEntries, pageSize]);
 
   const isEditing = Boolean(editingEntry);
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadLanguage = async () => {
+    const loadPreferences = async () => {
       const storedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+      const storedPageSize = Number(
+        await AsyncStorage.getItem(PAGE_SIZE_STORAGE_KEY)
+      );
 
       if (
         isMounted &&
@@ -254,9 +273,19 @@ export default function App() {
       ) {
         setLanguage(storedLanguage);
       }
+
+      if (
+        isMounted &&
+        (storedPageSize === 10 ||
+          storedPageSize === 20 ||
+          storedPageSize === 50 ||
+          storedPageSize === 100)
+      ) {
+        setPageSize(storedPageSize);
+      }
     };
 
-    loadLanguage();
+    loadPreferences();
 
     return () => {
       isMounted = false;
@@ -412,6 +441,55 @@ export default function App() {
     }));
   };
 
+  const handlePageSizeChange = async (nextPageSize: PageSize) => {
+    setPageSize(nextPageSize);
+    setCurrentPage(1);
+    await AsyncStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(nextPageSize));
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    const safePage = Math.min(Math.max(nextPage, 1), totalPages);
+    setCurrentPage(safePage);
+    listRef.current?.scrollToOffset?.({
+      offset: 0,
+      animated: true,
+    });
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [pageSize, searchText, sortOption]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
+  const scrollFocusedFieldIntoView = (target: number | null) => {
+    if (Platform.OS === 'web' || !target) {
+      return;
+    }
+
+    const scrollNode = findNodeHandle(formScrollRef.current);
+
+    if (!scrollNode) {
+      return;
+    }
+
+    setTimeout(() => {
+      UIManager.measureLayout(
+        target,
+        scrollNode,
+        () => undefined,
+        (_left, top) => {
+          formScrollRef.current?.scrollTo({
+            y: Math.max(0, top - 24),
+            animated: true,
+          });
+        }
+      );
+    }, 180);
+  };
+
   const handleSubmit = async () => {
     const draft: EntryDraft = {
       title: formValues.title,
@@ -436,6 +514,7 @@ export default function App() {
         Alert.alert(copy.addedTitle, copy.addedMessage);
       }
 
+      setCurrentPage(1);
       resetForm();
     } catch (error) {
       Alert.alert(copy.saveFailedTitle, copy.saveFailedMessage);
@@ -461,6 +540,7 @@ export default function App() {
       try {
         await clearEntries();
         setSearchText('');
+        setCurrentPage(1);
         resetForm();
         showImportResult(copy.libraryClearedTitle, copy.libraryClearedMessage);
       } catch (error) {
@@ -664,6 +744,7 @@ export default function App() {
       }
 
       const importSummary = await importEntries(parsedWorkbook.entries);
+      setCurrentPage(1);
 
       const detailLines = [
         `${copy.file}: ${picked.asset.name ?? copy.workbook}`,
@@ -758,6 +839,7 @@ export default function App() {
       }
 
       const importSummary = await importEntries(draftsToImport);
+      setCurrentPage(1);
       const detailLines = [
         `${copy.zipFile}: ${picked.asset.name ?? copy.archiveFallbackName}`,
         `${copy.workbook}: ${parsedArchive.workbookFileName}`,
@@ -824,6 +906,7 @@ export default function App() {
       isSaving={isSaving}
       language={language}
       onChange={handleChangeForm}
+      onFocusField={scrollFocusedFieldIntoView}
       onSubmit={handleSubmit}
       onCancel={resetForm}
       onPickImage={handleOpenImageOptions}
@@ -878,6 +961,12 @@ export default function App() {
           </Text>
         </View>
       </View>
+
+      <PageSizeSelector
+        pageSize={pageSize}
+        onPageSizeChange={handlePageSizeChange}
+        copy={copy}
+      />
     </>
   );
 
@@ -1016,7 +1105,7 @@ export default function App() {
 
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.backgroundBlobTop} />
         <View style={styles.backgroundBlobBottom} />
@@ -1032,8 +1121,10 @@ export default function App() {
             </View>
           ) : isFormVisible ? (
             <ScrollView
+              ref={formScrollRef}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
+              keyboardDismissMode="interactive"
               contentContainerStyle={styles.formScreenContainer}
             >
               <View style={styles.formScreenHeader}>
@@ -1084,7 +1175,7 @@ export default function App() {
           ) : (
             <FlatList
               {...commonListProps}
-              data={filteredEntries}
+              data={paginatedEntries}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <View style={styles.cardWrapper}>
@@ -1097,6 +1188,16 @@ export default function App() {
                   />
                 </View>
               )}
+              ListFooterComponent={
+                totalPages > 1 ? (
+                  <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                    copy={copy}
+                  />
+                ) : null
+              }
             />
           )}
         </View>

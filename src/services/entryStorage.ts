@@ -10,6 +10,10 @@ const normalizeDate = (value: unknown) => {
   return typeof value === 'string' && value.trim() ? value : new Date().toISOString();
 };
 
+const normalizeSeriesStatus = (value: unknown): NonNullable<Entry['seriesStatus']> => {
+  return value === 'completed' || value === 'discontinued' ? value : 'ongoing';
+};
+
 const normalizeEntry = (value: Partial<Entry>, index: number): Entry => {
   const fallbackDate = new Date(Date.now() - index * 1000).toISOString();
 
@@ -18,6 +22,7 @@ const normalizeEntry = (value: Partial<Entry>, index: number): Entry => {
     title: typeof value.title === 'string' ? value.title.trim() : '',
     episode: typeof value.episode === 'string' ? value.episode.trim() : '',
     link: typeof value.link === 'string' ? value.link.trim() : '',
+    seriesStatus: normalizeSeriesStatus(value.seriesStatus),
     coverImage: typeof value.coverImage === 'string' ? value.coverImage.trim() : '',
     localImageUri:
       typeof value.localImageUri === 'string' && value.localImageUri.trim()

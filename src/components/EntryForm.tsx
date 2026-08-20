@@ -10,11 +10,13 @@ import {
 import { Image } from 'expo-image';
 import { AppTheme } from '../constants/theme';
 import { AppLanguage, getCopy } from '../constants/localization';
+import { SeriesStatus } from '../types/entry';
 
 export interface EntryFormValues {
   title: string;
   episode: string;
   link: string;
+  seriesStatus: SeriesStatus;
   coverImage: string;
   localImageUri: string | null;
 }
@@ -50,6 +52,11 @@ export const EntryForm = ({
   const copy = getCopy(language);
   const previewUri = values.localImageUri || values.coverImage;
   const formRef = useRef<View | null>(null);
+  const statusOptions: { value: SeriesStatus; label: string }[] = [
+    { value: 'ongoing', label: copy.statusOngoing },
+    { value: 'completed', label: copy.statusCompleted },
+    { value: 'discontinued', label: copy.statusDiscontinued },
+  ];
   const genericInputProps = {
     autoComplete: 'off' as const,
     textContentType: 'none' as const,
@@ -186,6 +193,29 @@ export const EntryForm = ({
         onFocus={(event) => handleInputFocus(event)}
         onChangeText={(text) => onChange('episode', text)}
       />
+
+      <View style={styles.statusSection}>
+        <Text style={styles.label}>{copy.seriesStatus}</Text>
+        <View style={styles.statusOptions}>
+          {statusOptions.map((option) => {
+            const isSelected = values.seriesStatus === option.value;
+
+            return (
+              <TouchableOpacity
+                key={option.value}
+                style={[styles.statusOption, isSelected && styles.statusOptionSelected]}
+                onPress={() => onChange('seriesStatus', option.value)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+              >
+                <Text style={[styles.statusOptionText, isSelected && styles.statusOptionTextSelected]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
       <TextInput
         {...urlInputProps}
@@ -347,6 +377,35 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: AppTheme.colors.textPrimary,
     marginBottom: 12,
+  },
+  statusSection: {
+    marginBottom: 12,
+  },
+  statusOptions: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 8,
+  },
+  statusOption: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: AppTheme.radius.sm,
+    backgroundColor: AppTheme.colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  statusOptionSelected: {
+    backgroundColor: AppTheme.colors.secondary,
+  },
+  statusOptionText: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  statusOptionTextSelected: {
+    color: AppTheme.colors.textOnDark,
   },
   footer: {
     flexDirection: 'row',

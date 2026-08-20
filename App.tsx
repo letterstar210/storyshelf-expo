@@ -68,6 +68,7 @@ const EMPTY_FORM: EntryFormValues = {
   title: '',
   episode: '',
   link: '',
+  seriesStatus: 'ongoing',
   coverImage: '',
   localImageUri: null,
 };
@@ -207,6 +208,7 @@ export default function App() {
   const [language, setLanguage] = useState<AppLanguage>('th');
   const [searchText, setSearchText] = useState('');
   const [sortOption, setSortOption] = useState<EntrySortOption>('latest');
+  const [hideCompleted, setHideCompleted] = useState(false);
   const [pageSize, setPageSize] = useState<PageSize>(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [isFormVisible, setIsFormVisible] = useState(false);
@@ -250,11 +252,18 @@ export default function App() {
     () => sortEntries(filterEntries(entries, searchText), sortOption),
     [entries, searchText, sortOption]
   );
-  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / pageSize));
+  const visibleEntries = useMemo(
+    () =>
+      hideCompleted
+        ? filteredEntries.filter((entry) => entry.seriesStatus !== 'completed')
+        : filteredEntries,
+    [filteredEntries, hideCompleted]
+  );
+  const totalPages = Math.max(1, Math.ceil(visibleEntries.length / pageSize));
   const paginatedEntries = useMemo(() => {
     const firstEntryIndex = (currentPage - 1) * pageSize;
-    return filteredEntries.slice(firstEntryIndex, firstEntryIndex + pageSize);
-  }, [currentPage, filteredEntries, pageSize]);
+    return visibleEntries.slice(firstEntryIndex, firstEntryIndex + pageSize);
+  }, [currentPage, pageSize, visibleEntries]);
 
   const isEditing = Boolean(editingEntry);
 
@@ -323,6 +332,7 @@ export default function App() {
       title: entry.title,
       episode: entry.episode,
       link: entry.link,
+      seriesStatus: entry.seriesStatus ?? 'ongoing',
       coverImage: entry.coverImage,
       localImageUri: entry.localImageUri ?? null,
     });
@@ -458,7 +468,7 @@ export default function App() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [pageSize, searchText, sortOption]);
+  }, [hideCompleted, pageSize, searchText, sortOption]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
@@ -495,6 +505,7 @@ export default function App() {
       title: formValues.title,
       episode: formValues.episode,
       link: formValues.link,
+      seriesStatus: formValues.seriesStatus,
       coverImage: formValues.coverImage,
       localImageUri: formValues.localImageUri ?? undefined,
     };
@@ -941,7 +952,7 @@ export default function App() {
       <SearchBar
         value={searchText}
         onChangeText={setSearchText}
-        resultCount={filteredEntries.length}
+        resultCount={visibleEntries.length}
         sortOption={sortOption}
         onChangeSort={setSortOption}
         language={language}
@@ -956,11 +967,31 @@ export default function App() {
         </View>
         <View style={styles.sectionPill}>
           <Text style={styles.sectionPillText}>
-            {filteredEntries.length} {copy.results.toLowerCase()} ·{' '}
+            {visibleEntries.length} {copy.results.toLowerCase()} ·{' '}
             {getSortLabel(sortOption, language)}
           </Text>
         </View>
       </View>
+
+      <TouchableOpacity
+        style={[
+          styles.completedFilterButton,
+          hideCompleted && styles.completedFilterButtonActive,
+        ]}
+        onPress={() => setHideCompleted((current) => !current)}
+        activeOpacity={0.86}
+        accessibilityRole="button"
+        accessibilityState={{ selected: hideCompleted }}
+      >
+        <Text
+          style={[
+            styles.completedFilterButtonText,
+            hideCompleted && styles.completedFilterButtonTextActive,
+          ]}
+        >
+          {hideCompleted ? copy.showCompleted : copy.hideCompleted}
+        </Text>
+      </TouchableOpacity>
 
       <PageSizeSelector
         pageSize={pageSize}
@@ -1141,7 +1172,7 @@ export default function App() {
 
               {entryFormElement}
             </ScrollView>
-          ) : filteredEntries.length === 0 ? (
+          ) : visibleEntries.length === 0 ? (
             <FlatList
               {...commonListProps}
               data={[] as Entry[]}
@@ -1160,13 +1191,21 @@ export default function App() {
                       : copy.noResultsDescription
                   }
                   actionLabel={
-                    entries.length === 0 ? copy.addFirstEntry : copy.clearSearch
+                    entries.length === 0
+                      ? copy.addFirstEntry
+                      : hideCompleted
+                        ? copy.showCompleted
+                        : copy.clearSearch
                   }
                   onActionPress={
                     entries.length === 0
                       ? showCreateForm
                       : () => {
-                          setSearchText('');
+                          if (hideCompleted) {
+                            setHideCompleted(false);
+                          } else {
+                            setSearchText('');
+                          }
                         }
                   }
                 />
@@ -1280,6 +1319,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: AppTheme.colors.textSecondary,
     fontWeight: '800',
+  },
+  completedFilterButton: {
+    alignSelf: 'flex-start',
+    minHeight: 40,
+    justifyContent: 'center',
+    borderRadius: AppTheme.radius.pill,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+    backgroundColor: AppTheme.colors.surfaceRaised,
+    paddingHorizontal: 14,
+  },
+  completedFilterButtonActive: {
+    borderColor: AppTheme.colors.secondary,
+    backgroundColor: AppTheme.colors.secondary,
+  },
+  completedFilterButtonText: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  completedFilterButtonTextActive: {
+    color: AppTheme.colors.textOnDark,
   },
   loaderContainer: {
     flex: 1,

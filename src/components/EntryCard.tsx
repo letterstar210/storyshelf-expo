@@ -23,6 +23,12 @@ export const EntryCard = ({
 }: EntryCardProps) => {
   const copy = getCopy(language);
   const imageUri = entry.localImageUri || entry.coverImage;
+  const seriesStatus =
+    entry.seriesStatus === 'completed'
+      ? copy.statusCompleted
+      : entry.seriesStatus === 'discontinued'
+        ? copy.statusDiscontinued
+        : copy.statusOngoing;
 
   return (
     <View style={styles.card}>
@@ -59,10 +65,8 @@ export const EntryCard = ({
             </Text>
           </View>
           <View style={[styles.infoPill, styles.infoPillAlt]}>
-            <Text style={styles.infoLabel}>{copy.linkStatus}</Text>
-            <Text style={styles.infoValue}>
-              {entry.link ? copy.hasReadingLink : copy.savedOnly}
-            </Text>
+            <Text style={styles.infoLabel}>{copy.seriesStatus}</Text>
+            <Text style={styles.infoValue}>{seriesStatus}</Text>
           </View>
         </View>
 

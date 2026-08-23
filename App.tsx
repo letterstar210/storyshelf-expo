@@ -495,6 +495,30 @@ export default function App() {
     setIsLinkCheckerSettingsVisible(false);
   };
 
+  const requestLinkCheck = async (entry: Entry) => {
+    try {
+      return await checkLink(linkCheckerUrl, entry.link, entry.episode);
+    } catch (error) {
+      if (linkCheckerUrl === DEFAULT_LINK_CHECKER_URL) {
+        throw error;
+      }
+
+      // ponytail: recover from a stale address saved by an earlier network adapter.
+      const result = await checkLink(
+        DEFAULT_LINK_CHECKER_URL,
+        entry.link,
+        entry.episode
+      );
+      setLinkCheckerUrl(DEFAULT_LINK_CHECKER_URL);
+      setLinkCheckerDraftUrl(DEFAULT_LINK_CHECKER_URL);
+      await AsyncStorage.setItem(
+        LINK_CHECKER_URL_STORAGE_KEY,
+        DEFAULT_LINK_CHECKER_URL
+      );
+      return result;
+    }
+  };
+
   const handleCheckLink = async (entry: Entry) => {
     if (checkingEntryId || isCheckingAllLinks) {
       return;
@@ -508,7 +532,7 @@ export default function App() {
     setCheckingEntryId(entry.id);
 
     try {
-      const linkCheck = await checkLink(linkCheckerUrl, entry.link, entry.episode);
+      const linkCheck = await requestLinkCheck(entry);
       await saveLinkCheck(entry.id, linkCheck);
     } catch (error) {
       const message = getReadableErrorMessage(error, language);
@@ -549,7 +573,7 @@ export default function App() {
         try {
           checks.set(
             entry.id,
-            await checkLink(linkCheckerUrl, entry.link, entry.episode)
+            await requestLinkCheck(entry)
           );
         } catch (error) {
           checks.set(entry.id, {

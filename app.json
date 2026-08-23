@@ -25,6 +25,7 @@
     },
     "android": {
       "package": "com.zerod.readingapp",
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#fff0e2"

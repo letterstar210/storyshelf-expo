@@ -13,6 +13,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   UIManager,
   View,
@@ -60,9 +61,11 @@ import {
 } from './src/utils/entries';
 import { parseWorkbookEntries } from './src/utils/importWorkbook';
 import { openEntryLink } from './src/utils/linking';
+import { checkLink } from './src/services/linkChecker';
 
 const LANGUAGE_STORAGE_KEY = 'app_language';
 const PAGE_SIZE_STORAGE_KEY = 'library_page_size';
+const LINK_CHECKER_URL_STORAGE_KEY = 'link_checker_url';
 
 const EMPTY_FORM: EntryFormValues = {
   title: '',
@@ -203,6 +206,7 @@ export default function App() {
     deleteEntry,
     importEntries,
     clearEntries,
+    saveLinkCheck,
   } = useEntries();
 
   const [language, setLanguage] = useState<AppLanguage>('th');
@@ -218,6 +222,10 @@ export default function App() {
   const [specialImportUnlocked, setSpecialImportUnlocked] = useState(false);
   const [excelTapCount, setExcelTapCount] = useState(0);
   const [isSyncingUpdate, setIsSyncingUpdate] = useState(false);
+  const [linkCheckerUrl, setLinkCheckerUrl] = useState('');
+  const [linkCheckerDraftUrl, setLinkCheckerDraftUrl] = useState('');
+  const [isLinkCheckerSettingsVisible, setIsLinkCheckerSettingsVisible] = useState(false);
+  const [checkingEntryId, setCheckingEntryId] = useState<string | null>(null);
   const [showScrollTopButton, setShowScrollTopButton] = useState(false);
   const [importResult, setImportResult] = useState({
     visible: false,
@@ -275,6 +283,8 @@ export default function App() {
       const storedPageSize = Number(
         await AsyncStorage.getItem(PAGE_SIZE_STORAGE_KEY)
       );
+      const storedLinkCheckerUrl =
+        (await AsyncStorage.getItem(LINK_CHECKER_URL_STORAGE_KEY)) ?? '';
 
       if (
         isMounted &&
@@ -291,6 +301,11 @@ export default function App() {
           storedPageSize === 100)
       ) {
         setPageSize(storedPageSize);
+      }
+
+      if (isMounted && storedLinkCheckerUrl) {
+        setLinkCheckerUrl(storedLinkCheckerUrl);
+        setLinkCheckerDraftUrl(storedLinkCheckerUrl);
       }
     };
 
@@ -449,6 +464,52 @@ export default function App() {
       ...current,
       [key]: value,
     }));
+  };
+
+  const showLinkCheckerSettings = () => {
+    setLinkCheckerDraftUrl(linkCheckerUrl);
+    setIsLinkCheckerSettingsVisible(true);
+  };
+
+  const saveLinkCheckerUrl = async () => {
+    const normalizedUrl = linkCheckerDraftUrl.trim().replace(/\/+$/, '');
+
+    try {
+      const url = new URL(normalizedUrl);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        throw new Error('Invalid URL');
+      }
+    } catch {
+      Alert.alert(copy.linkCheckerSetupTitle, copy.linkCheckerInvalidUrl);
+      return;
+    }
+
+    setLinkCheckerUrl(normalizedUrl);
+    await AsyncStorage.setItem(LINK_CHECKER_URL_STORAGE_KEY, normalizedUrl);
+    setIsLinkCheckerSettingsVisible(false);
+  };
+
+  const handleCheckLink = async (entry: Entry) => {
+    if (!linkCheckerUrl) {
+      showLinkCheckerSettings();
+      return;
+    }
+
+    setCheckingEntryId(entry.id);
+
+    try {
+      const linkCheck = await checkLink(linkCheckerUrl, entry.link, entry.episode);
+      await saveLinkCheck(entry.id, linkCheck);
+    } catch (error) {
+      await saveLinkCheck(entry.id, {
+        status: 'check-failed',
+        checkedAt: new Date().toISOString(),
+        message: error instanceof Error ? error.message : undefined,
+      });
+      Alert.alert(copy.linkCheckerUnavailableTitle, copy.linkCheckerUnavailableMessage);
+    } finally {
+      setCheckingEntryId(null);
+    }
   };
 
   const handlePageSizeChange = async (nextPageSize: PageSize) => {
@@ -993,6 +1054,17 @@ export default function App() {
         </Text>
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={styles.linkCheckerSettingsButton}
+        onPress={showLinkCheckerSettings}
+        activeOpacity={0.86}
+        accessibilityRole="button"
+      >
+        <Text style={styles.linkCheckerSettingsButtonText}>
+          {copy.linkCheckerSettings}
+        </Text>
+      </TouchableOpacity>
+
       <PageSizeSelector
         pageSize={pageSize}
         onPageSizeChange={handlePageSizeChange}
@@ -1099,6 +1171,46 @@ export default function App() {
                 onPress={() => setImportOptionsVisible(false)}
               >
                 <Text style={styles.cancelResultButtonText}>{copy.cancel}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={isLinkCheckerSettingsVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsLinkCheckerSettingsVisible(false)}
+      >
+        <Pressable
+          style={styles.resultOverlay}
+          onPress={() => setIsLinkCheckerSettingsVisible(false)}
+        >
+          <Pressable style={styles.resultCard}>
+            <Text style={styles.resultTitle}>{copy.linkCheckerSetupTitle}</Text>
+            <Text style={styles.resultMessage}>{copy.linkCheckerSetupMessage}</Text>
+            <TextInput
+              style={styles.linkCheckerInput}
+              value={linkCheckerDraftUrl}
+              onChangeText={setLinkCheckerDraftUrl}
+              placeholder="http://192.168.1.20:4317"
+              placeholderTextColor={AppTheme.colors.placeholder}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              textContentType="none"
+              importantForAutofill="no"
+            />
+            <View style={styles.linkCheckerActions}>
+              <TouchableOpacity
+                style={styles.cancelResultButton}
+                onPress={() => setIsLinkCheckerSettingsVisible(false)}
+              >
+                <Text style={styles.cancelResultButtonText}>{copy.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.resultButton} onPress={saveLinkCheckerUrl}>
+                <Text style={styles.resultButtonText}>{copy.linkCheckerSave}</Text>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -1221,9 +1333,11 @@ export default function App() {
                   <EntryCard
                     entry={item}
                     language={language}
+                    isCheckingLink={checkingEntryId === item.id}
                     onEdit={startEditEntry}
                     onDelete={handleDelete}
                     onOpenLink={(url) => openEntryLink(url, language)}
+                    onCheckLink={handleCheckLink}
                   />
                 </View>
               )}
@@ -1342,6 +1456,22 @@ const styles = StyleSheet.create({
   completedFilterButtonTextActive: {
     color: AppTheme.colors.textOnDark,
   },
+  linkCheckerSettingsButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    minHeight: 34,
+    justifyContent: 'center',
+    borderRadius: AppTheme.radius.pill,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+    backgroundColor: AppTheme.colors.surfaceRaised,
+    paddingHorizontal: 12,
+  },
+  linkCheckerSettingsButtonText: {
+    color: AppTheme.colors.secondary,
+    fontSize: 12,
+    fontWeight: '800',
+  },
   loaderContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1445,6 +1575,23 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
+  },
+  linkCheckerInput: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+    backgroundColor: AppTheme.colors.background,
+    borderRadius: AppTheme.radius.sm,
+    paddingHorizontal: 12,
+    color: AppTheme.colors.textPrimary,
+    fontSize: 14,
+    marginBottom: 14,
+  },
+  linkCheckerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
   },
   importOptionGroup: {
     gap: 10,

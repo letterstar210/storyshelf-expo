@@ -4,7 +4,7 @@ import {
   loadEntries,
   saveEntries,
 } from '../services/entryStorage';
-import { Entry, EntryDraft } from '../types/entry';
+import { Entry, EntryDraft, LinkCheck } from '../types/entry';
 
 const sortByUpdatedAt = (entries: Entry[]) =>
   [...entries].sort((first, second) =>
@@ -73,20 +73,29 @@ export const useEntries = () => {
     setIsSaving(true);
 
     try {
-      const updatedEntries = entries.map((entry) =>
-        entry.id === entryId
-          ? {
+      const updatedEntries = entries.map((entry) => {
+        if (entry.id !== entryId) {
+          return entry;
+        }
+
+        const episode = draft.episode.trim();
+        const link = draft.link.trim();
+
+        return {
               ...entry,
               title: draft.title.trim(),
-              episode: draft.episode.trim(),
-              link: draft.link.trim(),
+              episode,
+              link,
               seriesStatus: draft.seriesStatus ?? 'ongoing',
               coverImage: draft.coverImage.trim(),
               localImageUri: draft.localImageUri?.trim() || undefined,
+              linkCheck:
+                episode === entry.episode && link === entry.link
+                  ? entry.linkCheck
+                  : undefined,
               updatedAt: new Date().toISOString(),
-            }
-          : entry
-      );
+            };
+      });
 
       await persist(updatedEntries);
     } finally {
@@ -136,6 +145,11 @@ export const useEntries = () => {
               draft.seriesStatus ?? existingEntry.seriesStatus ?? 'ongoing',
             coverImage: draft.coverImage.trim() || existingEntry.coverImage,
             localImageUri: draft.localImageUri?.trim() || existingEntry.localImageUri,
+            linkCheck:
+              draft.episode.trim() === existingEntry.episode &&
+              draft.link.trim() === existingEntry.link
+                ? existingEntry.linkCheck
+                : undefined,
             updatedAt: timestamp,
           };
 
@@ -191,6 +205,15 @@ export const useEntries = () => {
     }
   };
 
+  const saveLinkCheck = async (entryId: string, linkCheck: LinkCheck) => {
+    const nextEntries = entries.map((entry) =>
+      entry.id === entryId ? { ...entry, linkCheck } : entry
+    );
+
+    // ponytail: keep manual updatedAt stable; this is metadata from the local checker.
+    await persist(nextEntries);
+  };
+
   return {
     entries,
     isLoading,
@@ -200,5 +223,6 @@ export const useEntries = () => {
     deleteEntry,
     importEntries,
     clearEntries,
+    saveLinkCheck,
   };
 };

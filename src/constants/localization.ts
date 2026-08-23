@@ -99,7 +99,9 @@ const translations = {
     statusDiscontinued: 'No more updates',
     openReadingLink: 'Open reading link',
     checkLink: 'Check link',
+    checkAllLinks: 'Check all links',
     linkChecking: 'Checking...',
+    checkingLinks: 'Checking links',
     linkCheckNotChecked: 'Not checked yet',
     linkCheckUpdateAvailable: 'New chapter available',
     linkCheckUpToDate: 'Up to date',
@@ -116,6 +118,9 @@ const translations = {
     linkCheckerUnavailableTitle: 'Link Checker unavailable',
     linkCheckerUnavailableMessage:
       'Make sure the PC service is running and this phone is connected to the same Wi-Fi.',
+    linkCheckAllCompleteTitle: 'Link check complete',
+    linkCheckAllCompleteMessage:
+      'Checked {count} links. Your saved chapters and update times were not changed.',
     edit: 'Edit',
     delete: 'Delete',
     chooseCoverImage: 'Choose a cover image',
@@ -327,7 +332,9 @@ const translations = {
     statusDiscontinued: 'ไม่อัปเดตต่อ',
     openReadingLink: 'เปิดลิงก์อ่าน',
     checkLink: 'ตรวจสอบลิงก์',
+    checkAllLinks: 'ตรวจสอบลิงก์ทั้งหมด',
     linkChecking: 'กำลังตรวจ...',
+    checkingLinks: 'กำลังตรวจลิงก์',
     linkCheckNotChecked: 'ยังไม่ได้ตรวจ',
     linkCheckUpdateAvailable: 'มีตอนใหม่',
     linkCheckUpToDate: 'อัปเดตล่าสุดแล้ว',
@@ -345,6 +352,9 @@ const translations = {
     linkCheckerUnavailableTitle: 'เชื่อมต่อ Link Checker ไม่ได้',
     linkCheckerUnavailableMessage:
       'ตรวจสอบว่า service บน PC ยังทำงานอยู่ และมือถือเชื่อม Wi-Fi เดียวกัน',
+    linkCheckAllCompleteTitle: 'ตรวจสอบลิงก์เสร็จแล้ว',
+    linkCheckAllCompleteMessage:
+      'ตรวจสอบ {count} ลิงก์แล้ว โดยไม่แก้ตอนล่าสุดหรือเวลาอัปเดตที่บันทึกเอง',
     edit: 'แก้ไข',
     delete: 'ลบ',
     chooseCoverImage: 'เลือกรูปปก',

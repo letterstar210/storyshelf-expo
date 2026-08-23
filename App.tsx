@@ -207,6 +207,7 @@ export default function App() {
     importEntries,
     clearEntries,
     saveLinkCheck,
+    saveLinkChecks,
   } = useEntries();
 
   const [language, setLanguage] = useState<AppLanguage>('th');
@@ -226,6 +227,8 @@ export default function App() {
   const [linkCheckerDraftUrl, setLinkCheckerDraftUrl] = useState('');
   const [isLinkCheckerSettingsVisible, setIsLinkCheckerSettingsVisible] = useState(false);
   const [checkingEntryId, setCheckingEntryId] = useState<string | null>(null);
+  const [isCheckingAllLinks, setIsCheckingAllLinks] = useState(false);
+  const [linkCheckProgress, setLinkCheckProgress] = useState({ current: 0, total: 0 });
   const [showScrollTopButton, setShowScrollTopButton] = useState(false);
   const [importResult, setImportResult] = useState({
     visible: false,
@@ -490,6 +493,10 @@ export default function App() {
   };
 
   const handleCheckLink = async (entry: Entry) => {
+    if (checkingEntryId || isCheckingAllLinks) {
+      return;
+    }
+
     if (!linkCheckerUrl) {
       showLinkCheckerSettings();
       return;
@@ -509,6 +516,56 @@ export default function App() {
       Alert.alert(copy.linkCheckerUnavailableTitle, copy.linkCheckerUnavailableMessage);
     } finally {
       setCheckingEntryId(null);
+    }
+  };
+
+  const handleCheckAllLinks = async () => {
+    if (checkingEntryId || isCheckingAllLinks) {
+      return;
+    }
+
+    if (!linkCheckerUrl) {
+      showLinkCheckerSettings();
+      return;
+    }
+
+    const entriesWithLinks = entries.filter((entry) => entry.link.trim());
+    const checks = new Map<Entry['id'], NonNullable<Entry['linkCheck']>>();
+
+    setIsCheckingAllLinks(true);
+    setLinkCheckProgress({ current: 0, total: entriesWithLinks.length });
+
+    try {
+      for (const [index, entry] of entriesWithLinks.entries()) {
+        setCheckingEntryId(entry.id);
+
+        try {
+          checks.set(
+            entry.id,
+            await checkLink(linkCheckerUrl, entry.link, entry.episode)
+          );
+        } catch (error) {
+          checks.set(entry.id, {
+            status: 'check-failed',
+            checkedAt: new Date().toISOString(),
+            message: error instanceof Error ? error.message : undefined,
+          });
+        }
+
+        setLinkCheckProgress({ current: index + 1, total: entriesWithLinks.length });
+      }
+
+      if (checks.size > 0) {
+        await saveLinkChecks(checks);
+      }
+
+      Alert.alert(
+        copy.linkCheckAllCompleteTitle,
+        replaceCount(copy.linkCheckAllCompleteMessage, checks.size)
+      );
+    } finally {
+      setCheckingEntryId(null);
+      setIsCheckingAllLinks(false);
     }
   };
 
@@ -1065,6 +1122,23 @@ export default function App() {
         </Text>
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={[
+          styles.checkAllLinksButton,
+          isCheckingAllLinks && styles.checkAllLinksButtonActive,
+        ]}
+        onPress={handleCheckAllLinks}
+        disabled={isCheckingAllLinks}
+        activeOpacity={0.86}
+        accessibilityRole="button"
+      >
+        <Text style={styles.checkAllLinksButtonText}>
+          {isCheckingAllLinks
+            ? `${copy.checkingLinks} ${linkCheckProgress.current}/${linkCheckProgress.total}`
+            : copy.checkAllLinks}
+        </Text>
+      </TouchableOpacity>
+
       <PageSizeSelector
         pageSize={pageSize}
         onPageSizeChange={handlePageSizeChange}
@@ -1471,6 +1545,23 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.secondary,
     fontSize: 12,
     fontWeight: '800',
+  },
+  checkAllLinksButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    minHeight: 40,
+    justifyContent: 'center',
+    borderRadius: AppTheme.radius.pill,
+    backgroundColor: AppTheme.colors.secondary,
+    paddingHorizontal: 14,
+  },
+  checkAllLinksButtonActive: {
+    backgroundColor: AppTheme.colors.textMuted,
+  },
+  checkAllLinksButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
   },
   loaderContainer: {
     flex: 1,

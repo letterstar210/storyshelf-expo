@@ -17,6 +17,8 @@ npm run link-checker
 
 The terminal prints an address such as `http://192.168.1.20:4317`. In the app, tap **Check link** on any entry, paste that address, then tap **Save**. The address is stored only on that phone.
 
+Use **Check all links** to check every saved entry that has a reading link. It runs one check at a time to avoid overloading source sites.
+
 If Windows asks for permission, allow Node.js on **Private networks**. The PC must remain on while the phone checks links.
 
 ## What is saved

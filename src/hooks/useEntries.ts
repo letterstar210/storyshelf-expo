@@ -205,13 +205,19 @@ export const useEntries = () => {
     }
   };
 
-  const saveLinkCheck = async (entryId: string, linkCheck: LinkCheck) => {
+  const saveLinkChecks = async (linkChecks: Map<string, LinkCheck>) => {
     const nextEntries = entries.map((entry) =>
-      entry.id === entryId ? { ...entry, linkCheck } : entry
+      linkChecks.has(entry.id)
+        ? { ...entry, linkCheck: linkChecks.get(entry.id) }
+        : entry
     );
 
     // ponytail: keep manual updatedAt stable; this is metadata from the local checker.
     await persist(nextEntries);
+  };
+
+  const saveLinkCheck = async (entryId: string, linkCheck: LinkCheck) => {
+    await saveLinkChecks(new Map([[entryId, linkCheck]]));
   };
 
   return {
@@ -224,5 +230,6 @@ export const useEntries = () => {
     importEntries,
     clearEntries,
     saveLinkCheck,
+    saveLinkChecks,
   };
 };

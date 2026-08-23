@@ -66,6 +66,8 @@ import { checkLink } from './src/services/linkChecker';
 const LANGUAGE_STORAGE_KEY = 'app_language';
 const PAGE_SIZE_STORAGE_KEY = 'library_page_size';
 const LINK_CHECKER_URL_STORAGE_KEY = 'link_checker_url';
+// ponytail: this PC is the only local checker host; change it after the router assigns a new IP.
+const DEFAULT_LINK_CHECKER_URL = 'http://192.168.1.100:4317';
 
 const EMPTY_FORM: EntryFormValues = {
   title: '',
@@ -223,8 +225,8 @@ export default function App() {
   const [specialImportUnlocked, setSpecialImportUnlocked] = useState(false);
   const [excelTapCount, setExcelTapCount] = useState(0);
   const [isSyncingUpdate, setIsSyncingUpdate] = useState(false);
-  const [linkCheckerUrl, setLinkCheckerUrl] = useState('');
-  const [linkCheckerDraftUrl, setLinkCheckerDraftUrl] = useState('');
+  const [linkCheckerUrl, setLinkCheckerUrl] = useState(DEFAULT_LINK_CHECKER_URL);
+  const [linkCheckerDraftUrl, setLinkCheckerDraftUrl] = useState(DEFAULT_LINK_CHECKER_URL);
   const [isLinkCheckerSettingsVisible, setIsLinkCheckerSettingsVisible] = useState(false);
   const [checkingEntryId, setCheckingEntryId] = useState<string | null>(null);
   const [isCheckingAllLinks, setIsCheckingAllLinks] = useState(false);
@@ -306,9 +308,10 @@ export default function App() {
         setPageSize(storedPageSize);
       }
 
-      if (isMounted && storedLinkCheckerUrl) {
-        setLinkCheckerUrl(storedLinkCheckerUrl);
-        setLinkCheckerDraftUrl(storedLinkCheckerUrl);
+      if (isMounted) {
+        const nextLinkCheckerUrl = storedLinkCheckerUrl || DEFAULT_LINK_CHECKER_URL;
+        setLinkCheckerUrl(nextLinkCheckerUrl);
+        setLinkCheckerDraftUrl(nextLinkCheckerUrl);
       }
     };
 
@@ -508,12 +511,16 @@ export default function App() {
       const linkCheck = await checkLink(linkCheckerUrl, entry.link, entry.episode);
       await saveLinkCheck(entry.id, linkCheck);
     } catch (error) {
+      const message = getReadableErrorMessage(error, language);
       await saveLinkCheck(entry.id, {
         status: 'check-failed',
         checkedAt: new Date().toISOString(),
-        message: error instanceof Error ? error.message : undefined,
+        message,
       });
-      Alert.alert(copy.linkCheckerUnavailableTitle, copy.linkCheckerUnavailableMessage);
+      Alert.alert(
+        copy.linkCheckerUnavailableTitle,
+        `${copy.linkCheckerUnavailableMessage}\n\n${message}`
+      );
     } finally {
       setCheckingEntryId(null);
     }

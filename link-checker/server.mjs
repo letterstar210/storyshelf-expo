@@ -191,6 +191,8 @@ if (process.argv.includes('--self-test')) {
 }
 
 const server = createServer(async (request, response) => {
+  console.log(`${new Date().toISOString()} ${request.socket.remoteAddress} ${request.method} ${request.url}`);
+
   if (request.method === 'OPTIONS') {
     sendJson(response, 204, {});
     return;

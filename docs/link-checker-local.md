@@ -15,7 +15,7 @@ npx playwright install chromium
 npm run link-checker
 ```
 
-The terminal prints an address such as `http://192.168.1.20:4317`. In the app, tap **Check link** on any entry, paste that address, then tap **Save**. The address is stored only on that phone.
+The app is preconfigured for this PC at `http://192.168.1.100:4317`. If the router later changes the PC address, use **Checker settings** in the app to paste the new address printed by the terminal.
 
 Use **Check all links** to check every saved entry that has a reading link. It runs one check at a time to avoid overloading source sites.
 

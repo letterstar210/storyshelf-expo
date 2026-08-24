@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { AppTheme } from '../constants/theme';
 import { AppLanguage, getCopy } from '../constants/localization';
 import {
@@ -32,7 +33,7 @@ interface DropdownPosition {
   width: number;
 }
 
-const DROPDOWN_WIDTH = 190;
+const DROPDOWN_WIDTH = 210;
 
 export const SearchBar = ({
   value,
@@ -50,6 +51,7 @@ export const SearchBar = ({
     left: 0,
     width: DROPDOWN_WIDTH,
   });
+
   const autofillDisabledProps = {
     autoComplete: 'off' as const,
     textContentType: 'none' as const,
@@ -67,8 +69,8 @@ export const SearchBar = ({
     triggerRef.current?.measureInWindow((x, y, width, height) => {
       const screenWidth = Dimensions.get('window').width;
       const safeLeft = Math.max(
-        18,
-        Math.min(x + width - DROPDOWN_WIDTH, screenWidth - DROPDOWN_WIDTH - 18)
+        16,
+        Math.min(x + width - DROPDOWN_WIDTH, screenWidth - DROPDOWN_WIDTH - 16)
       );
 
       setDropdownPosition({
@@ -89,6 +91,12 @@ export const SearchBar = ({
     <View style={styles.wrapper}>
       <View style={styles.panel}>
         <View style={styles.searchRow}>
+          <Ionicons
+            name="search-outline"
+            size={19}
+            color={AppTheme.colors.primary}
+            style={styles.searchIcon}
+          />
           <TextInput
             {...autofillDisabledProps}
             style={styles.input}
@@ -98,11 +106,28 @@ export const SearchBar = ({
             onChangeText={onChangeText}
             onFocus={() => setIsDropdownVisible(false)}
           />
+          {value ? (
+            <TouchableOpacity
+              onPress={() => onChangeText('')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color={AppTheme.colors.textMuted}
+              />
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         <View style={styles.metaRow}>
           <View style={styles.resultChip}>
-            <Text style={styles.resultLabel}>{copy.results}</Text>
+            <Ionicons
+              name="funnel-outline"
+              size={14}
+              color={AppTheme.colors.secondary}
+            />
+            <Text style={styles.resultLabel}>{copy.results}:</Text>
             <Text style={styles.resultValue}>
               {resultCount} {copy.entries}
             </Text>
@@ -112,12 +137,22 @@ export const SearchBar = ({
             ref={triggerRef}
             style={styles.sortTrigger}
             onPress={handleToggleDropdown}
-            activeOpacity={0.88}
+            activeOpacity={0.82}
           >
-            <Text style={styles.sortTriggerLabel}>{copy.sortBy}</Text>
+            <Ionicons
+              name="swap-vertical-outline"
+              size={15}
+              color={AppTheme.colors.primary}
+            />
+            <Text style={styles.sortTriggerLabel}>{copy.sortBy}:</Text>
             <Text style={styles.sortTriggerValue}>
               {getSortLabel(sortOption, language)}
             </Text>
+            <Ionicons
+              name="chevron-down"
+              size={14}
+              color={AppTheme.colors.textMuted}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -142,7 +177,14 @@ export const SearchBar = ({
               },
             ]}
           >
-            <Text style={styles.dropdownTitle}>{copy.chooseSorting}</Text>
+            <View style={styles.dropdownHeader}>
+              <Ionicons
+                name="swap-vertical"
+                size={14}
+                color={AppTheme.colors.primary}
+              />
+              <Text style={styles.dropdownTitle}>{copy.chooseSorting}</Text>
+            </View>
             {ENTRY_SORT_OPTIONS.map((option) => {
               const isActive = option === sortOption;
 
@@ -163,6 +205,13 @@ export const SearchBar = ({
                   >
                     {getSortLabel(option, language)}
                   </Text>
+                  {isActive ? (
+                    <Ionicons
+                      name="checkmark"
+                      size={17}
+                      color={AppTheme.colors.primary}
+                    />
+                  ) : null}
                 </TouchableOpacity>
               );
             })}
@@ -175,51 +224,57 @@ export const SearchBar = ({
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   panel: {
-    borderBottomWidth: 1,
-    borderBottomColor: AppTheme.colors.border,
-    paddingBottom: 16,
+    gap: 10,
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: AppTheme.colors.background,
-    borderRadius: 0,
+    backgroundColor: AppTheme.colors.surface,
+    borderRadius: AppTheme.radius.md,
     borderWidth: 1,
-    borderColor: '#E6D7C9',
-    paddingHorizontal: 12,
-    marginBottom: 12,
+    borderColor: AppTheme.colors.border,
+    paddingHorizontal: 14,
+    shadowColor: AppTheme.colors.shadow,
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  searchIcon: {
+    marginRight: 10,
   },
   input: {
     flex: 1,
-    paddingVertical: 14,
-    fontSize: 15,
+    paddingVertical: 12,
+    fontSize: 14,
+    fontWeight: '500',
     color: AppTheme.colors.textPrimary,
   },
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   resultChip: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: AppTheme.colors.secondarySoft,
-    borderRadius: 0,
+    borderRadius: AppTheme.radius.pill,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
   resultLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: AppTheme.colors.secondary,
-    fontWeight: '800',
-    marginBottom: 3,
-    letterSpacing: 0.4,
+    fontWeight: '600',
   },
   resultValue: {
-    fontSize: 14,
+    fontSize: 13,
     color: AppTheme.colors.textPrimary,
     fontWeight: '800',
   },
@@ -227,25 +282,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: AppTheme.colors.surfaceMuted,
-    borderRadius: 0,
+    backgroundColor: AppTheme.colors.surface,
+    borderRadius: AppTheme.radius.pill,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    shadowColor: AppTheme.colors.shadow,
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 1,
   },
   sortTriggerLabel: {
     fontSize: 12,
     color: AppTheme.colors.textMuted,
+    fontWeight: '600',
   },
   sortTriggerValue: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
     color: AppTheme.colors.textPrimary,
-  },
-  sortTriggerArrow: {
-    fontSize: 12,
-    color: AppTheme.colors.textSecondary,
   },
   modalBackdrop: {
     flex: 1,
@@ -253,48 +310,51 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     position: 'absolute',
-    backgroundColor: AppTheme.colors.surfaceRaised,
-    borderRadius: AppTheme.radius.md,
+    backgroundColor: AppTheme.colors.surface,
+    borderRadius: AppTheme.radius.lg,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
-    padding: 6,
+    padding: 8,
     shadowColor: AppTheme.colors.shadow,
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.14,
     shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 24,
-    elevation: 14,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingTop: 6,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: AppTheme.colors.border,
+    marginBottom: 4,
   },
   dropdownTitle: {
     fontSize: 12,
     color: AppTheme.colors.textMuted,
-    fontWeight: '800',
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 6,
+    fontWeight: '700',
   },
   dropdownItem: {
-    minHeight: 42,
+    minHeight: 40,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: AppTheme.radius.sm,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   dropdownItemActive: {
-    backgroundColor: AppTheme.colors.surfaceMuted,
+    backgroundColor: AppTheme.colors.primarySoft,
   },
   dropdownItemText: {
-    fontSize: 14,
+    fontSize: 13,
     color: AppTheme.colors.textSecondary,
     fontWeight: '600',
   },
   dropdownItemTextActive: {
-    color: AppTheme.colors.primaryDark,
-    fontWeight: '800',
-  },
-  checkmark: {
-    fontSize: 14,
-    color: AppTheme.colors.primaryDark,
+    color: AppTheme.colors.primary,
     fontWeight: '800',
   },
 });

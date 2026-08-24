@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { AppTheme } from '../constants/theme';
 
 interface EmptyStateProps {
@@ -17,9 +18,17 @@ export const EmptyState = ({
 }: EmptyStateProps) => {
   return (
     <View style={styles.wrapper}>
+      <View style={styles.iconCircle}>
+        <Ionicons name="book-outline" size={32} color={AppTheme.colors.primary} />
+      </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.description}>{description}</Text>
-      <TouchableOpacity style={styles.button} onPress={onActionPress}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={onActionPress}
+        activeOpacity={0.84}
+      >
+        <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
         <Text style={styles.buttonText}>{actionLabel}</Text>
       </TouchableOpacity>
     </View>
@@ -28,36 +37,58 @@ export const EmptyState = ({
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: AppTheme.colors.surfaceRaised,
-    borderRadius: 0,
+    backgroundColor: AppTheme.colors.surface,
+    borderRadius: AppTheme.radius.xl,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
     paddingVertical: 42,
-    paddingHorizontal: 22,
+    paddingHorizontal: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 260,
+    minHeight: 280,
+    shadowColor: AppTheme.colors.shadow,
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  iconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: AppTheme.colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '900',
+    fontSize: 20,
+    fontWeight: '800',
     color: AppTheme.colors.textPrimary,
-    marginBottom: 10,
+    marginBottom: 8,
     textAlign: 'center',
   },
   description: {
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 20,
     color: AppTheme.colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 18,
-    maxWidth: 260,
+    marginBottom: 20,
+    maxWidth: 280,
   },
   button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: AppTheme.colors.primary,
-    paddingHorizontal: 18,
-    paddingVertical: 13,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: AppTheme.radius.pill,
+    shadowColor: AppTheme.colors.primary,
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 3,
   },
   buttonText: {
     color: '#FFFFFF',

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { AppTheme } from '../constants/theme';
 
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
@@ -63,7 +64,7 @@ export function PageSizeSelector({ pageSize, onPageSizeChange, copy }: PageSizeS
   return (
     <View style={styles.pageSizeCard}>
       <View style={styles.pageSizeTitleRow}>
-        <View style={styles.pageSizeAccent} />
+        <Ionicons name="layers-outline" size={15} color={AppTheme.colors.primary} />
         <Text style={styles.pageSizeLabel}>{copy.itemsPerPage}</Text>
       </View>
 
@@ -106,7 +107,7 @@ export function PaginationControls({
   return (
     <View style={styles.paginationCard}>
       <View style={styles.paginationHeader}>
-        <View style={styles.paginationAccent} />
+        <Ionicons name="bookmark-outline" size={15} color={AppTheme.colors.primary} />
         <Text style={styles.pageInfo}>{formatPageInfo(copy.pageOf, currentPage, totalPages)}</Text>
       </View>
 
@@ -118,7 +119,11 @@ export function PaginationControls({
           accessibilityRole="button"
           accessibilityLabel={copy.firstPage}
         >
-          <Text style={styles.controlText}>{'<<'}</Text>
+          <Ionicons
+            name="play-skip-back-outline"
+            size={14}
+            color={isFirstPage ? AppTheme.colors.textMuted : AppTheme.colors.primary}
+          />
         </Pressable>
         <Pressable
           style={[styles.jumpButton, isFirstPage && styles.controlButtonDisabled]}
@@ -127,7 +132,11 @@ export function PaginationControls({
           accessibilityRole="button"
           accessibilityLabel={copy.previousPage}
         >
-          <Text style={styles.controlText}>{'<'}</Text>
+          <Ionicons
+            name="chevron-back"
+            size={16}
+            color={isFirstPage ? AppTheme.colors.textMuted : AppTheme.colors.primary}
+          />
         </Pressable>
         <View style={styles.jumpDivider} />
         <Pressable
@@ -137,7 +146,11 @@ export function PaginationControls({
           accessibilityRole="button"
           accessibilityLabel={copy.nextPage}
         >
-          <Text style={styles.controlText}>{'>'}</Text>
+          <Ionicons
+            name="chevron-forward"
+            size={16}
+            color={isLastPage ? AppTheme.colors.textMuted : AppTheme.colors.primary}
+          />
         </Pressable>
         <Pressable
           style={[styles.jumpButton, isLastPage && styles.controlButtonDisabled]}
@@ -146,7 +159,11 @@ export function PaginationControls({
           accessibilityRole="button"
           accessibilityLabel={copy.lastPage}
         >
-          <Text style={styles.controlText}>{'>>'}</Text>
+          <Ionicons
+            name="play-skip-forward-outline"
+            size={14}
+            color={isLastPage ? AppTheme.colors.textMuted : AppTheme.colors.primary}
+          />
         </Pressable>
       </View>
 
@@ -180,10 +197,10 @@ export function PaginationControls({
 const styles = StyleSheet.create({
   pageSizeCard: {
     marginTop: AppTheme.spacing.md,
-    borderRadius: AppTheme.radius.md,
+    borderRadius: AppTheme.radius.lg,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
-    backgroundColor: AppTheme.colors.surfaceRaised,
+    backgroundColor: AppTheme.colors.surface,
     padding: AppTheme.spacing.sm,
     shadowColor: AppTheme.colors.shadow,
     shadowOpacity: 0.05,
@@ -197,12 +214,6 @@ const styles = StyleSheet.create({
     gap: AppTheme.spacing.xs,
     marginBottom: AppTheme.spacing.sm,
   },
-  pageSizeAccent: {
-    width: 7,
-    height: 7,
-    borderRadius: AppTheme.radius.pill,
-    backgroundColor: AppTheme.colors.primary,
-  },
   pageSizeLabel: {
     color: AppTheme.colors.textPrimary,
     fontSize: 13,
@@ -211,21 +222,21 @@ const styles = StyleSheet.create({
   pageSizeOptions: {
     flexDirection: 'row',
     gap: 4,
-    borderRadius: AppTheme.radius.sm,
+    borderRadius: AppTheme.radius.pill,
     backgroundColor: AppTheme.colors.surfaceMuted,
-    padding: 4,
+    padding: 3,
   },
   pageSizeOption: {
     flex: 1,
-    minHeight: 38,
+    minHeight: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: AppTheme.radius.sm,
+    borderRadius: AppTheme.radius.pill,
   },
   pageSizeOptionSelected: {
-    backgroundColor: AppTheme.colors.secondary,
+    backgroundColor: AppTheme.colors.surface,
     shadowColor: AppTheme.colors.shadow,
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 2,
@@ -233,23 +244,23 @@ const styles = StyleSheet.create({
   pageSizeText: {
     color: AppTheme.colors.textSecondary,
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   pageSizeTextSelected: {
-    color: AppTheme.colors.textOnDark,
+    color: AppTheme.colors.primary,
+    fontWeight: '800',
   },
   paginationCard: {
     marginTop: AppTheme.spacing.lg,
     gap: AppTheme.spacing.md,
     alignItems: 'center',
-    borderRadius: AppTheme.radius.lg,
+    borderRadius: AppTheme.radius.xl,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
-    backgroundColor: AppTheme.colors.surfaceRaised,
-    padding: AppTheme.spacing.sm,
-    paddingTop: AppTheme.spacing.md,
+    backgroundColor: AppTheme.colors.surface,
+    padding: AppTheme.spacing.md,
     shadowColor: AppTheme.colors.shadow,
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 16,
     elevation: 3,
@@ -258,12 +269,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: AppTheme.spacing.xs,
-  },
-  paginationAccent: {
-    width: 7,
-    height: 7,
-    borderRadius: AppTheme.radius.pill,
-    backgroundColor: AppTheme.colors.primary,
   },
   pageInfo: {
     color: AppTheme.colors.textPrimary,
@@ -275,37 +280,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    padding: 4,
+    padding: 3,
     borderRadius: AppTheme.radius.pill,
     backgroundColor: AppTheme.colors.surfaceMuted,
   },
   jumpButton: {
-    minWidth: 42,
-    height: 38,
+    minWidth: 40,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: AppTheme.radius.pill,
-    backgroundColor: AppTheme.colors.surfaceRaised,
+    backgroundColor: AppTheme.colors.surface,
   },
   jumpDivider: {
     width: 1,
-    height: 20,
+    height: 18,
     marginHorizontal: 2,
     backgroundColor: AppTheme.colors.border,
   },
   controlButtonDisabled: {
-    opacity: 0.3,
-  },
-  controlText: {
-    color: AppTheme.colors.primaryDark,
-    fontSize: 13,
-    fontWeight: '900',
+    opacity: 0.4,
   },
   pageNumberRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
     flexWrap: 'wrap',
   },
   pageButton: {
@@ -315,28 +315,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: AppTheme.radius.pill,
     backgroundColor: AppTheme.colors.surfaceMuted,
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
   },
   pageButtonSelected: {
     backgroundColor: AppTheme.colors.primary,
-    shadowColor: AppTheme.colors.shadow,
-    shadowOpacity: 0.14,
+    shadowColor: AppTheme.colors.primary,
+    shadowOpacity: 0.25,
     shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 5,
+    shadowRadius: 6,
     elevation: 2,
   },
   pageButtonText: {
     color: AppTheme.colors.textSecondary,
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   pageButtonTextSelected: {
-    color: AppTheme.colors.textOnDark,
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
   ellipsis: {
     color: AppTheme.colors.textMuted,
     fontSize: 14,
     fontWeight: '800',
-    paddingHorizontal: 1,
+    paddingHorizontal: 2,
   },
 });

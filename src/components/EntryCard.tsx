@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { AppTheme } from '../constants/theme';
 import { AppLanguage, getCopy } from '../constants/localization';
 import { Entry } from '../types/entry';
@@ -32,12 +33,33 @@ export const EntryCard = ({
   const [isActionsVisible, setIsActionsVisible] = useState(false);
   const isDesktop = width >= 720;
   const imageUri = entry.localImageUri || entry.coverImage;
-  const seriesStatus =
-    entry.seriesStatus === 'completed'
-      ? copy.statusCompleted
-      : entry.seriesStatus === 'discontinued'
-        ? copy.statusDiscontinued
-        : copy.statusOngoing;
+
+  const isCompleted = entry.seriesStatus === 'completed';
+  const isDiscontinued = entry.seriesStatus === 'discontinued';
+  const seriesStatus = isCompleted
+    ? copy.statusCompleted
+    : isDiscontinued
+      ? copy.statusDiscontinued
+      : copy.statusOngoing;
+
+  const statusColor = isCompleted
+    ? AppTheme.colors.success
+    : isDiscontinued
+      ? AppTheme.colors.danger
+      : AppTheme.colors.ongoing;
+
+  const statusBg = isCompleted
+    ? AppTheme.colors.successSoft
+    : isDiscontinued
+      ? AppTheme.colors.dangerSoft
+      : AppTheme.colors.ongoingSoft;
+
+  const statusIcon = isCompleted
+    ? 'checkmark-circle'
+    : isDiscontinued
+      ? 'pause-circle'
+      : 'play-circle';
+
   const linkCheckLabel =
     entry.linkCheck?.status === 'update-available'
       ? copy.linkCheckUpdateAvailable
@@ -51,101 +73,216 @@ export const EntryCard = ({
 
   return (
     <View style={styles.card}>
-      <Text style={styles.index}>{String(editorialIndex).padStart(2, '0')}</Text>
-      <View style={styles.coverWrap}>
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.cover} contentFit="cover" />
-        ) : (
-          <View style={styles.placeholderCover}>
-            <Text style={styles.placeholderTitle}>{copy.coverMissingTitle}</Text>
-            <Text style={styles.placeholderSubtitle}>
-              {copy.coverMissingSubtitle}
-            </Text>
-          </View>
-        )}
+      <View style={styles.topHeaderRow}>
+        <View style={styles.indexBadge}>
+          <Text style={styles.indexText}>#{String(editorialIndex).padStart(2, '0')}</Text>
+        </View>
+        <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
+          <Ionicons name={statusIcon} size={13} color={statusColor} />
+          <Text style={[styles.statusText, { color: statusColor }]}>{seriesStatus}</Text>
+        </View>
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.titleRow}>
+      <View style={styles.bodyRow}>
+        <View style={styles.coverWrap}>
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.cover} contentFit="cover" />
+          ) : (
+            <View style={styles.placeholderCover}>
+              <Ionicons name="book-outline" size={26} color={AppTheme.colors.primary} />
+              <Text style={styles.placeholderTitle}>{copy.coverMissingTitle}</Text>
+              <Text style={styles.placeholderSubtitle}>{copy.coverMissingSubtitle}</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.content}>
           <Text style={styles.title} numberOfLines={2}>
             {entry.title}
           </Text>
-        </View>
 
-        <View style={[styles.infoStrip, isDesktop && styles.infoStripDesktop]}>
-          <View style={styles.infoPill}>
-            <Text style={styles.infoLabel}>{copy.latestChapter}</Text>
-            <Text style={styles.infoValue}>
-              {entry.episode ? entry.episode : copy.notSet}
-            </Text>
-          </View>
-          <View style={[styles.infoPill, styles.infoPillAlt]}>
-            <Text style={styles.infoLabel}>{copy.seriesStatus}</Text>
-            <Text style={styles.infoValue}>{seriesStatus}</Text>
-          </View>
-          <View style={styles.infoPill}>
-            <Text style={styles.infoLabel}>{copy.updated}</Text>
-            <Text style={styles.infoValue}>{formatUpdatedAt(entry.updatedAt, language)}</Text>
-          </View>
-        </View>
+          <View style={styles.infoGrid}>
+            <View style={styles.infoChip}>
+              <Ionicons name="bookmark-outline" size={13} color={AppTheme.colors.primary} />
+              <Text style={styles.infoLabel}>{copy.latestChapter}:</Text>
+              <Text style={styles.infoValue}>
+                {entry.episode ? entry.episode : copy.notSet}
+              </Text>
+            </View>
 
-        {entry.link ? (
-          <>
-            <TouchableOpacity style={styles.linkButton} onPress={() => onOpenLink(entry.link)}>
-              <Text style={styles.linkButtonText}>{copy.openReadingLink}</Text>
-            </TouchableOpacity>
+            <View style={styles.infoChip}>
+              <Ionicons name="time-outline" size={13} color={AppTheme.colors.textMuted} />
+              <Text style={styles.infoValueMuted}>
+                {formatUpdatedAt(entry.updatedAt, language)}
+              </Text>
+            </View>
+          </View>
 
-            {entry.linkCheck ? <View style={styles.linkCheckRow}>
-              <View style={styles.linkCheckTextWrap}>
-                <Text
-                  style={[
-                    styles.linkCheckStatus,
-                    entry.linkCheck?.status === 'update-available' &&
-                      styles.linkCheckStatusUpdate,
-                    entry.linkCheck?.status === 'broken' && styles.linkCheckStatusError,
-                  ]}
-                >
-                  {linkCheckLabel}
-                </Text>
-                {entry.linkCheck?.latestEpisode ? (
-                  <Text style={styles.linkCheckDetail}>
-                    {copy.linkCheckLatest}: {entry.linkCheck.latestEpisode}
-                    {entry.linkCheck.updateCount
-                      ? ` (+${entry.linkCheck.updateCount})`
-                      : ''}
-                  </Text>
-                ) : null}
-              </View>
-              {isDesktop ? <TouchableOpacity
-                style={styles.checkLinkButton}
-                onPress={() => onCheckLink(entry)}
-                disabled={isCheckingLink}
-                activeOpacity={0.84}
+          {entry.link ? (
+            <View style={styles.linkContainer}>
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() => onOpenLink(entry.link)}
+                activeOpacity={0.82}
               >
-                <Text style={styles.checkLinkButtonText}>
-                  {isCheckingLink ? copy.linkChecking : copy.checkLink}
-                </Text>
-              </TouchableOpacity> : null}
-            </View> : null}
-          </>
-        ) : null}
+                <Ionicons name="open-outline" size={14} color={AppTheme.colors.secondary} />
+                <Text style={styles.linkButtonText}>{copy.openReadingLink}</Text>
+              </TouchableOpacity>
 
-        {isDesktop ? (
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.editButton} onPress={() => onEdit(entry)} accessibilityRole="button"><Text style={styles.editText}>{copy.edit}</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(entry.id)} accessibilityRole="button"><Text style={styles.deleteText}>{copy.delete}</Text></TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity style={styles.actionsTrigger} onPress={() => setIsActionsVisible(true)} accessibilityRole="button"><Text style={styles.actionsTriggerText}>{copy.actions}</Text></TouchableOpacity>
-        )}
+              {entry.linkCheck ? (
+                <View style={styles.linkCheckRow}>
+                  <View style={styles.linkCheckBadge}>
+                    <Ionicons
+                      name={
+                        entry.linkCheck.status === 'update-available'
+                          ? 'sparkles'
+                          : entry.linkCheck.status === 'broken'
+                            ? 'alert-circle'
+                            : 'checkmark-circle'
+                      }
+                      size={13}
+                      color={
+                        entry.linkCheck.status === 'update-available'
+                          ? AppTheme.colors.primary
+                          : entry.linkCheck.status === 'broken'
+                            ? AppTheme.colors.danger
+                            : AppTheme.colors.success
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.linkCheckStatus,
+                        entry.linkCheck?.status === 'update-available' &&
+                          styles.linkCheckStatusUpdate,
+                        entry.linkCheck?.status === 'broken' && styles.linkCheckStatusError,
+                      ]}
+                    >
+                      {linkCheckLabel}
+                    </Text>
+                  </View>
+
+                  {entry.linkCheck?.latestEpisode ? (
+                    <Text style={styles.linkCheckDetail}>
+                      {copy.linkCheckLatest}: {entry.linkCheck.latestEpisode}
+                      {entry.linkCheck.updateCount
+                        ? ` (+${entry.linkCheck.updateCount})`
+                        : ''}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
+          {isDesktop ? (
+            <View style={styles.desktopActions}>
+              {entry.link ? (
+                <TouchableOpacity
+                  style={styles.actionIconButton}
+                  onPress={() => onCheckLink(entry)}
+                  disabled={isCheckingLink}
+                >
+                  <Ionicons
+                    name="refresh-outline"
+                    size={16}
+                    color={AppTheme.colors.secondary}
+                  />
+                  <Text style={styles.actionIconButtonText}>
+                    {isCheckingLink ? copy.linkChecking : copy.checkLink}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity
+                style={styles.actionIconButton}
+                onPress={() => onEdit(entry)}
+                accessibilityRole="button"
+              >
+                <Ionicons name="pencil-outline" size={16} color={AppTheme.colors.primary} />
+                <Text style={styles.editText}>{copy.edit}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionIconButton, styles.deleteIconButton]}
+                onPress={() => onDelete(entry.id)}
+                accessibilityRole="button"
+              >
+                <Ionicons name="trash-outline" size={16} color={AppTheme.colors.danger} />
+                <Text style={styles.deleteText}>{copy.delete}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.mobileActionsTrigger}
+              onPress={() => setIsActionsVisible(true)}
+              accessibilityRole="button"
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="ellipsis-horizontal"
+                size={18}
+                color={AppTheme.colors.primary}
+              />
+              <Text style={styles.mobileActionsTriggerText}>{copy.actions}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      <Modal visible={isActionsVisible} transparent animationType="fade" onRequestClose={() => setIsActionsVisible(false)}>
+      <Modal
+        visible={isActionsVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsActionsVisible(false)}
+      >
         <Pressable style={styles.actionsOverlay} onPress={() => setIsActionsVisible(false)}>
-          <Pressable style={styles.actionsPopup}>
-            {entry.link ? <TouchableOpacity style={styles.popupAction} onPress={() => { setIsActionsVisible(false); onCheckLink(entry); }}><Text style={styles.popupActionText}>{copy.checkLink}</Text></TouchableOpacity> : null}
-            <TouchableOpacity style={styles.popupAction} onPress={() => { setIsActionsVisible(false); onEdit(entry); }}><Text style={styles.popupActionText}>{copy.edit}</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.popupAction} onPress={() => { setIsActionsVisible(false); onDelete(entry.id); }}><Text style={styles.popupDeleteText}>{copy.delete}</Text></TouchableOpacity>
+          <Pressable style={styles.actionsSheet}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>{entry.title}</Text>
+
+            {entry.link ? (
+              <TouchableOpacity
+                style={styles.sheetAction}
+                onPress={() => {
+                  setIsActionsVisible(false);
+                  onCheckLink(entry);
+                }}
+              >
+                <Ionicons
+                  name="refresh-outline"
+                  size={19}
+                  color={AppTheme.colors.secondary}
+                />
+                <Text style={styles.sheetActionText}>{copy.checkLink}</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            <TouchableOpacity
+              style={styles.sheetAction}
+              onPress={() => {
+                setIsActionsVisible(false);
+                onEdit(entry);
+              }}
+            >
+              <Ionicons name="pencil-outline" size={19} color={AppTheme.colors.primary} />
+              <Text style={styles.sheetActionText}>{copy.edit}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.sheetAction, styles.sheetDeleteAction]}
+              onPress={() => {
+                setIsActionsVisible(false);
+                onDelete(entry.id);
+              }}
+            >
+              <Ionicons name="trash-outline" size={19} color={AppTheme.colors.danger} />
+              <Text style={styles.sheetDeleteText}>{copy.delete}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sheetCancelButton}
+              onPress={() => setIsActionsVisible(false)}
+            >
+              <Text style={styles.sheetCancelText}>{copy.cancel}</Text>
+            </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
@@ -155,117 +292,158 @@ export const EntryCard = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: AppTheme.colors.surfaceRaised,
-    borderRadius: 0,
-    borderBottomWidth: 1,
+    backgroundColor: AppTheme.colors.surface,
+    borderRadius: AppTheme.radius.lg,
+    borderWidth: 1,
     borderColor: AppTheme.colors.border,
-    paddingVertical: 14,
+    padding: 14,
+    shadowColor: AppTheme.colors.shadow,
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 14,
+    elevation: 3,
+  },
+  topHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  indexBadge: {
+    backgroundColor: AppTheme.colors.primarySoft,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: AppTheme.radius.pill,
+  },
+  indexText: {
+    color: AppTheme.colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: AppTheme.radius.pill,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  bodyRow: {
     flexDirection: 'row',
     gap: 14,
   },
-  index: {
-    width: 30,
-    color: AppTheme.colors.primary,
-    fontSize: 18,
-    fontWeight: '700',
-  },
   coverWrap: {
-    width: 58,
+    width: 68,
   },
   cover: {
-    width: 58,
-    height: 78,
-    borderRadius: 0,
+    width: 68,
+    height: 94,
+    borderRadius: AppTheme.radius.sm,
     backgroundColor: AppTheme.colors.surfaceMuted,
   },
   placeholderCover: {
-    width: 58,
-    height: 78,
-    borderRadius: 0,
-    backgroundColor: AppTheme.colors.surfaceMuted,
+    width: 68,
+    height: 94,
+    borderRadius: AppTheme.radius.sm,
+    backgroundColor: AppTheme.colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 4,
   },
   placeholderTitle: {
-    fontSize: 16,
+    fontSize: 10,
     fontWeight: '900',
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.primary,
+    marginTop: 4,
   },
   placeholderSubtitle: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '800',
-    color: AppTheme.colors.textMuted,
-    letterSpacing: 1,
+    color: AppTheme.colors.primary,
   },
   content: {
     flex: 1,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 7,
-  },
   title: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
     color: AppTheme.colors.textPrimary,
-    lineHeight: 23,
+    lineHeight: 21,
+    marginBottom: 6,
   },
-  infoStrip: {
+  infoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 8,
   },
-  infoStripDesktop: { flexDirection: 'row', alignItems: 'flex-start' },
-  infoPill: {
-    minWidth: 82,
-    paddingRight: 12,
-  },
-  infoPillAlt: {
-    borderLeftWidth: 1,
-    borderLeftColor: AppTheme.colors.border,
-    paddingLeft: 12,
+  infoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: AppTheme.colors.surfaceMuted,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: AppTheme.radius.xs,
   },
   infoLabel: {
     fontSize: 11,
     color: AppTheme.colors.textMuted,
-    fontWeight: '700',
-    marginBottom: 2,
+    fontWeight: '600',
   },
   infoValue: {
-    fontSize: 13,
+    fontSize: 12,
     color: AppTheme.colors.textPrimary,
-    fontWeight: '800',
+    fontWeight: '700',
+  },
+  infoValueMuted: {
+    fontSize: 11,
+    color: AppTheme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  linkContainer: {
+    marginBottom: 8,
+    gap: 4,
   },
   linkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     alignSelf: 'flex-start',
+    backgroundColor: AppTheme.colors.secondarySoft,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    marginBottom: 5,
+    borderRadius: AppTheme.radius.pill,
   },
   linkButtonText: {
-    fontSize: 13,
-    color: AppTheme.colors.primaryDark,
+    fontSize: 12,
+    color: AppTheme.colors.secondary,
     fontWeight: '700',
   },
   linkCheckRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 8,
-    marginBottom: 5,
+    marginTop: 2,
   },
-  linkCheckTextWrap: {
-    flex: 1,
+  linkCheckBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   linkCheckStatus: {
     color: AppTheme.colors.textMuted,
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '700',
   },
   linkCheckStatusUpdate: {
-    color: AppTheme.colors.success,
+    color: AppTheme.colors.primary,
+    fontWeight: '800',
   },
   linkCheckStatusError: {
     color: AppTheme.colors.danger,
@@ -273,45 +451,116 @@ const styles = StyleSheet.create({
   linkCheckDetail: {
     color: AppTheme.colors.textSecondary,
     fontSize: 11,
-    fontWeight: '700',
-    marginTop: 2,
+    fontWeight: '600',
   },
-  checkLinkButton: {
-    borderWidth: 1,
-    borderColor: AppTheme.colors.border,
-    borderRadius: 0,
+  desktopActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  actionIconButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: AppTheme.colors.surfaceMuted,
     paddingHorizontal: 10,
-    paddingVertical: 9,
+    paddingVertical: 6,
+    borderRadius: AppTheme.radius.pill,
   },
-  checkLinkButtonText: {
+  deleteIconButton: {
+    backgroundColor: AppTheme.colors.dangerSoft,
+  },
+  actionIconButtonText: {
     color: AppTheme.colors.secondary,
     fontSize: 12,
-    fontWeight: '900',
-  },
-  actions: { flexDirection: 'row', gap: 16, alignSelf: 'flex-start' },
-  actionsTrigger: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', borderTopWidth: 1, borderTopColor: AppTheme.colors.border, paddingRight: 12 },
-  actionsTriggerText: { color: AppTheme.colors.primary, fontSize: 13, fontWeight: '700' },
-  editButton: {
-    minHeight: 36,
-    justifyContent: 'center',
+    fontWeight: '700',
   },
   editText: {
     color: AppTheme.colors.primary,
     fontWeight: '700',
-    fontSize: 13,
-  },
-  deleteButton: {
-    minHeight: 36,
-    justifyContent: 'center',
+    fontSize: 12,
   },
   deleteText: {
     color: AppTheme.colors.danger,
-    fontWeight: '800',
-    fontSize: 13,
+    fontWeight: '700',
+    fontSize: 12,
   },
-  actionsOverlay: { flex: 1, backgroundColor: AppTheme.colors.overlay, justifyContent: 'flex-end' },
-  actionsPopup: { backgroundColor: AppTheme.colors.surfaceRaised, borderTopWidth: 1, borderTopColor: AppTheme.colors.border, paddingHorizontal: 20, paddingVertical: 10 },
-  popupAction: { minHeight: 48, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: AppTheme.colors.border },
-  popupActionText: { color: AppTheme.colors.textPrimary, fontSize: 15, fontWeight: '700' },
-  popupDeleteText: { color: AppTheme.colors.danger, fontSize: 15, fontWeight: '700' },
+  mobileActionsTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: AppTheme.colors.surfaceMuted,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: AppTheme.radius.pill,
+    marginTop: 2,
+  },
+  mobileActionsTriggerText: {
+    color: AppTheme.colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  actionsOverlay: {
+    flex: 1,
+    backgroundColor: AppTheme.colors.overlay,
+    justifyContent: 'flex-end',
+  },
+  actionsSheet: {
+    backgroundColor: AppTheme.colors.surface,
+    borderTopLeftRadius: AppTheme.radius.xl,
+    borderTopRightRadius: AppTheme.radius.xl,
+    paddingHorizontal: 20,
+    paddingBottom: 28,
+    paddingTop: 12,
+    gap: 8,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: AppTheme.colors.border,
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: AppTheme.colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  sheetAction: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: AppTheme.colors.surfaceMuted,
+    borderRadius: AppTheme.radius.md,
+    paddingHorizontal: 16,
+  },
+  sheetDeleteAction: {
+    backgroundColor: AppTheme.colors.dangerSoft,
+  },
+  sheetActionText: {
+    color: AppTheme.colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  sheetDeleteText: {
+    color: AppTheme.colors.danger,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  sheetCancelButton: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  sheetCancelText: {
+    color: AppTheme.colors.textMuted,
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });

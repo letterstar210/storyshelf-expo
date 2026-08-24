@@ -31,6 +31,11 @@ const getLatestChapter = (values) => {
   return chapters.length > 0 ? Math.max(...chapters) : undefined;
 };
 
+const isSecurityChallenge = (title, body) =>
+  /just a moment|security verification|verify you are human|checking your browser/i.test(
+    `${title} ${body}`
+  );
+
 const getSeriesPath = (value) => {
   const path = decodeURIComponent(new URL(value).pathname)
     .toLowerCase()
@@ -147,6 +152,8 @@ const inspectLink = async (urlValue, savedEpisode) => {
     const statusCode = response?.status() ?? 0;
     const finalUrl = new URL(validateTargetUrl(page.url()));
     const checkedAt = new Date().toISOString();
+    const title = await page.title();
+    const bodyText = await page.locator('body').innerText();
 
     if (statusCode === 404 || statusCode === 410) {
       return {
@@ -154,6 +161,15 @@ const inspectLink = async (urlValue, savedEpisode) => {
         checkedAt,
         sourceHost: finalUrl.hostname,
         message: `The site returned HTTP ${statusCode}.`,
+      };
+    }
+
+    if (isSecurityChallenge(title, bodyText)) {
+      return {
+        status: 'check-failed',
+        checkedAt,
+        sourceHost: finalUrl.hostname,
+        message: 'This site blocks automated checks with a security verification page.',
       };
     }
 
@@ -215,6 +231,7 @@ const getLocalUrls = () => {
 const runSelfTest = () => {
   assert.deepEqual(getChapterNumbers(['Chapter 173', 'ตอนที่ 170', 'ignore']), [173, 170]);
   assert.equal(getLatestChapter(['ตอนที่ 173', 'Chapter 170']), 173);
+  assert.equal(isSecurityChallenge('Just a moment...', 'Performing security verification'), true);
   assert.deepEqual(
     getSameSeriesChapterTexts(
       [

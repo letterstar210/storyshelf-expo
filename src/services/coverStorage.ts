@@ -39,11 +39,20 @@ export const persistLocalCover = async (
   const coverDirectory = `${FileSystem.documentDirectory}${COVER_DIRECTORY_NAME}/`;
   await FileSystem.makeDirectoryAsync(coverDirectory, { intermediates: true });
 
-  const extension = getExtension(fileName, mimeType);
+  const extension = getExtension(fileName ?? sourceUri, mimeType);
   const targetUri = `${coverDirectory}cover-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2, 8)}.${extension}`;
 
   await FileSystem.copyAsync({ from: sourceUri, to: targetUri });
   return targetUri;
+};
+
+export const needsPersistentCoverCopy = (uri?: string) => {
+  if (Platform.OS === 'web' || !uri || !FileSystem.documentDirectory) {
+    return false;
+  }
+
+  const isLocalUri = uri.startsWith('file://') || uri.startsWith('content://');
+  return isLocalUri && !uri.startsWith(FileSystem.documentDirectory);
 };

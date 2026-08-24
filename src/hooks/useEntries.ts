@@ -4,12 +4,39 @@ import {
   loadEntries,
   saveEntries,
 } from '../services/entryStorage';
+import {
+  needsPersistentCoverCopy,
+  persistLocalCover,
+} from '../services/coverStorage';
 import { Entry, EntryDraft, LinkCheck } from '../types/entry';
 
 const sortByUpdatedAt = (entries: Entry[]) =>
   [...entries].sort((first, second) =>
     second.updatedAt.localeCompare(first.updatedAt)
   );
+
+const migrateLegacyLocalCovers = async (entries: Entry[]) => {
+  let hasChanges = false;
+  const migratedEntries: Entry[] = [];
+
+  for (const entry of entries) {
+    if (!needsPersistentCoverCopy(entry.localImageUri)) {
+      migratedEntries.push(entry);
+      continue;
+    }
+
+    try {
+      const localImageUri = await persistLocalCover(entry.localImageUri!);
+      migratedEntries.push({ ...entry, localImageUri });
+      hasChanges = true;
+    } catch {
+      // A previously cleared cache file cannot be recovered automatically.
+      migratedEntries.push(entry);
+    }
+  }
+
+  return { entries: migratedEntries, hasChanges };
+};
 
 export const useEntries = () => {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -22,9 +49,14 @@ export const useEntries = () => {
     const bootstrap = async () => {
       try {
         const loadedEntries = await loadEntries();
+        const migrated = await migrateLegacyLocalCovers(loadedEntries);
+
+        if (migrated.hasChanges) {
+          await saveEntries(migrated.entries);
+        }
 
         if (isMounted) {
-          setEntries(sortByUpdatedAt(loadedEntries));
+          setEntries(sortByUpdatedAt(migrated.entries));
         }
       } finally {
         if (isMounted) {

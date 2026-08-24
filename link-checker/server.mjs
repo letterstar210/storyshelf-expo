@@ -31,6 +31,19 @@ const getLatestChapter = (values) => {
   return chapters.length > 0 ? Math.max(...chapters) : undefined;
 };
 
+const waitForChapterOptions = async (page) => {
+  await page
+    .waitForFunction(
+      ({ selector, pattern }) =>
+        [...document.querySelectorAll(selector)].some((option) =>
+          new RegExp(pattern, 'i').test(option.textContent ?? '')
+        ),
+      { selector: chapterOptionSelector, pattern: chapterPattern.source },
+      { timeout: 6_000 }
+    )
+    .catch(() => {});
+};
+
 const isSecurityChallenge = (title, body) =>
   /just a moment|security verification|verify you are human|checking your browser/i.test(
     `${title} ${body}`
@@ -175,6 +188,11 @@ const inspectLink = async (urlValue, savedEpisode) => {
 
     // Chapter selectors belong to the current reader; unrelated links are fallback only.
     let latest = getLatestChapter(await page.locator(chapterOptionSelector).allTextContents());
+
+    if (latest === undefined && (await page.locator(chapterOptionSelector).count()) > 0) {
+      await waitForChapterOptions(page);
+      latest = getLatestChapter(await page.locator(chapterOptionSelector).allTextContents());
+    }
 
     if (latest === undefined) {
       const links = await page.locator('a').evaluateAll((nodes) =>

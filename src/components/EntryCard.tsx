@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import { AppTheme } from '../constants/theme';
 import { AppLanguage, getCopy } from '../constants/localization';
@@ -28,6 +28,9 @@ export const EntryCard = ({
   onCheckLink,
 }: EntryCardProps) => {
   const copy = getCopy(language);
+  const { width } = useWindowDimensions();
+  const [isActionsVisible, setIsActionsVisible] = useState(false);
+  const isDesktop = width >= 720;
   const imageUri = entry.localImageUri || entry.coverImage;
   const seriesStatus =
     entry.seriesStatus === 'completed'
@@ -128,16 +131,25 @@ export const EntryCard = ({
           </>
         ) : null}
 
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.editButton} onPress={() => onEdit(entry)}>
-            <Text style={styles.editText}>{copy.edit}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(entry.id)}>
-            <Text style={styles.deleteText}>{copy.delete}</Text>
-          </TouchableOpacity>
-        </View>
+        {isDesktop ? (
+          <View style={styles.actions}>
+            <TouchableOpacity style={styles.editButton} onPress={() => onEdit(entry)}><Text style={styles.editText}>{copy.edit}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(entry.id)}><Text style={styles.deleteText}>{copy.delete}</Text></TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.actionsTrigger} onPress={() => setIsActionsVisible(true)}><Text style={styles.actionsTriggerText}>{copy.actions}</Text></TouchableOpacity>
+        )}
       </View>
+
+      <Modal visible={isActionsVisible} transparent animationType="fade" onRequestClose={() => setIsActionsVisible(false)}>
+        <Pressable style={styles.actionsOverlay} onPress={() => setIsActionsVisible(false)}>
+          <Pressable style={styles.actionsPopup}>
+            {entry.link ? <TouchableOpacity style={styles.popupAction} onPress={() => { setIsActionsVisible(false); onCheckLink(entry); }}><Text style={styles.popupActionText}>{copy.checkLink}</Text></TouchableOpacity> : null}
+            <TouchableOpacity style={styles.popupAction} onPress={() => { setIsActionsVisible(false); onEdit(entry); }}><Text style={styles.popupActionText}>{copy.edit}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.popupAction} onPress={() => { setIsActionsVisible(false); onDelete(entry.id); }}><Text style={styles.popupDeleteText}>{copy.delete}</Text></TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -293,6 +305,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  actionsTrigger: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', borderTopWidth: 1, borderTopColor: AppTheme.colors.border, paddingRight: 12 },
+  actionsTriggerText: { color: AppTheme.colors.primary, fontSize: 13, fontWeight: '700' },
   editButton: {
     flex: 1,
     backgroundColor: AppTheme.colors.secondary,
@@ -319,4 +333,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 13,
   },
+  actionsOverlay: { flex: 1, backgroundColor: AppTheme.colors.overlay, justifyContent: 'flex-end' },
+  actionsPopup: { backgroundColor: AppTheme.colors.surfaceRaised, borderTopWidth: 1, borderTopColor: AppTheme.colors.border, paddingHorizontal: 20, paddingVertical: 10 },
+  popupAction: { minHeight: 48, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: AppTheme.colors.border },
+  popupActionText: { color: AppTheme.colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  popupDeleteText: { color: AppTheme.colors.danger, fontSize: 15, fontWeight: '700' },
 });

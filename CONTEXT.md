@@ -2,6 +2,16 @@
 
 This context describes the terms used for the reader's local comic and web-novel library. It keeps the Library browsing experience consistent as the collection grows.
 
+## Product Identity
+
+**Comic Reading Tracker**:
+The product name for the reader's local library of comics and web novels.
+_Avoid_: Renaming the product to Novel Tracking when describing the existing application.
+
+**Entry**:
+A saved comic or web-novel record in Comic Reading Tracker.
+_Avoid_: Novel when referring to the domain model or existing UI copy.
+
 ## Language
 
 **Library Results**:

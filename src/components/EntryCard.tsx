@@ -70,14 +70,9 @@ export const EntryCard = ({
           <Text style={styles.title} numberOfLines={2}>
             {entry.title}
           </Text>
-          <View style={styles.updatedBadge}>
-            <Text style={styles.updatedBadgeText}>
-              {formatUpdatedAt(entry.updatedAt, language)}
-            </Text>
-          </View>
         </View>
 
-        <View style={styles.infoStrip}>
+        <View style={[styles.infoStrip, isDesktop && styles.infoStripDesktop]}>
           <View style={styles.infoPill}>
             <Text style={styles.infoLabel}>{copy.latestChapter}</Text>
             <Text style={styles.infoValue}>
@@ -87,6 +82,10 @@ export const EntryCard = ({
           <View style={[styles.infoPill, styles.infoPillAlt]}>
             <Text style={styles.infoLabel}>{copy.seriesStatus}</Text>
             <Text style={styles.infoValue}>{seriesStatus}</Text>
+          </View>
+          <View style={styles.infoPill}>
+            <Text style={styles.infoLabel}>{copy.updated}</Text>
+            <Text style={styles.infoValue}>{formatUpdatedAt(entry.updatedAt, language)}</Text>
           </View>
         </View>
 
@@ -175,13 +174,13 @@ const styles = StyleSheet.create({
   },
   cover: {
     width: 58,
-    height: 82,
+    height: 78,
     borderRadius: 0,
     backgroundColor: AppTheme.colors.surfaceMuted,
   },
   placeholderCover: {
     width: 58,
-    height: 82,
+    height: 78,
     borderRadius: 0,
     backgroundColor: AppTheme.colors.surfaceMuted,
     alignItems: 'center',
@@ -206,69 +205,56 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 10,
-    marginBottom: 10,
+    marginBottom: 7,
   },
   title: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: 16,
+    fontWeight: '700',
     color: AppTheme.colors.textPrimary,
     lineHeight: 23,
   },
-  updatedBadge: {
-    backgroundColor: AppTheme.colors.background,
-    borderRadius: AppTheme.radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  updatedBadgeText: {
-    fontSize: 11,
-    color: AppTheme.colors.textMuted,
-    fontWeight: '700',
-  },
   infoStrip: {
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 8,
   },
+  infoStripDesktop: { flexDirection: 'row', alignItems: 'flex-start' },
   infoPill: {
-    backgroundColor: AppTheme.colors.surfaceMuted,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    minWidth: 82,
+    paddingRight: 12,
   },
   infoPillAlt: {
-    backgroundColor: AppTheme.colors.secondarySoft,
+    borderLeftWidth: 1,
+    borderLeftColor: AppTheme.colors.border,
+    paddingLeft: 12,
   },
   infoLabel: {
     fontSize: 11,
     color: AppTheme.colors.textMuted,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: 2,
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: 13,
     color: AppTheme.colors.textPrimary,
     fontWeight: '800',
   },
   linkButton: {
     alignSelf: 'flex-start',
-    backgroundColor: '#FCE6D3',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
+    paddingVertical: 6,
+    marginBottom: 5,
   },
   linkButtonText: {
     fontSize: 13,
     color: AppTheme.colors.primaryDark,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   linkCheckRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 5,
   },
   linkCheckTextWrap: {
     flex: 1,
@@ -291,8 +277,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkLinkButton: {
-    backgroundColor: AppTheme.colors.secondarySoft,
-    borderRadius: AppTheme.radius.sm,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+    borderRadius: 0,
     paddingHorizontal: 10,
     paddingVertical: 9,
   },

@@ -17,9 +17,6 @@ export const EmptyState = ({
 }: EmptyStateProps) => {
   return (
     <View style={styles.wrapper}>
-      <View style={styles.iconWrap}>
-        <Text style={styles.icon}>□</Text>
-      </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.description}>{description}</Text>
       <TouchableOpacity style={styles.button} onPress={onActionPress}>
@@ -32,7 +29,7 @@ export const EmptyState = ({
 const styles = StyleSheet.create({
   wrapper: {
     backgroundColor: AppTheme.colors.surfaceRaised,
-    borderRadius: AppTheme.radius.lg,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
     paddingVertical: 42,
@@ -40,24 +37,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 260,
-    shadowColor: AppTheme.colors.shadow,
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 20,
-    elevation: 4,
-  },
-  iconWrap: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: AppTheme.colors.surfaceMuted,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  icon: {
-    fontSize: 30,
-    color: AppTheme.colors.primaryDark,
   },
   title: {
     fontSize: 22,

@@ -228,6 +228,7 @@ export default function App() {
   const [linkCheckerUrl, setLinkCheckerUrl] = useState(DEFAULT_LINK_CHECKER_URL);
   const [linkCheckerDraftUrl, setLinkCheckerDraftUrl] = useState(DEFAULT_LINK_CHECKER_URL);
   const [isLinkCheckerSettingsVisible, setIsLinkCheckerSettingsVisible] = useState(false);
+  const [isLibraryToolsVisible, setIsLibraryToolsVisible] = useState(false);
   const [checkingEntryId, setCheckingEntryId] = useState<string | null>(null);
   const [isCheckingAllLinks, setIsCheckingAllLinks] = useState(false);
   const [linkCheckProgress, setLinkCheckProgress] = useState({ current: 0, total: 0 });
@@ -1084,18 +1085,11 @@ export default function App() {
     <>
       <ScreenHeader
         title={copy.appTitle}
-        subtitle={copy.appSubtitle}
         totalEntriesText={totalEntriesText}
-        isFormVisible={isFormVisible}
-        isImporting={isSaving}
-        isSyncing={isSyncingUpdate}
-        isClearing={isSaving}
         language={language}
         onLanguageChange={changeLanguage}
         onToggleForm={handleToggleForm}
-        onImportPress={() => setImportOptionsVisible(true)}
-        onSyncPress={handleSyncUpdate}
-        onClearPress={handleClearLibrary}
+        onToolsPress={() => setIsLibraryToolsVisible(true)}
       />
 
       <SearchBar
@@ -1142,34 +1136,6 @@ export default function App() {
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.linkCheckerSettingsButton}
-        onPress={showLinkCheckerSettings}
-        activeOpacity={0.86}
-        accessibilityRole="button"
-      >
-        <Text style={styles.linkCheckerSettingsButtonText}>
-          {copy.linkCheckerSettings}
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[
-          styles.checkAllLinksButton,
-          isCheckingAllLinks && styles.checkAllLinksButtonActive,
-        ]}
-        onPress={handleCheckAllLinks}
-        disabled={isCheckingAllLinks}
-        activeOpacity={0.86}
-        accessibilityRole="button"
-      >
-        <Text style={styles.checkAllLinksButtonText}>
-          {isCheckingAllLinks
-            ? `${copy.checkingLinks} ${linkCheckProgress.current}/${linkCheckProgress.total}`
-            : copy.checkAllLinks}
-        </Text>
-      </TouchableOpacity>
-
       <PageSizeSelector
         pageSize={pageSize}
         onPageSizeChange={handlePageSizeChange}
@@ -1192,6 +1158,36 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
+
+      <Modal
+        visible={isLibraryToolsVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsLibraryToolsVisible(false)}
+      >
+        <Pressable style={styles.resultOverlay} onPress={() => setIsLibraryToolsVisible(false)}>
+          <Pressable style={styles.resultCard}>
+            <Text style={styles.resultTitle}>{copy.libraryTools}</Text>
+            <View style={styles.importOptionGroup}>
+              <TouchableOpacity style={styles.resultButton} onPress={() => { setIsLibraryToolsVisible(false); setImportOptionsVisible(true); }}>
+                <Text style={styles.resultButtonText}>{copy.importExcel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.secondaryResultButton} onPress={() => { setIsLibraryToolsVisible(false); handleCheckAllLinks(); }} disabled={isCheckingAllLinks}>
+                <Text style={styles.resultButtonText}>{isCheckingAllLinks ? `${copy.checkingLinks} ${linkCheckProgress.current}/${linkCheckProgress.total}` : copy.checkAllLinks}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.toolTextButton} onPress={() => { setIsLibraryToolsVisible(false); showLinkCheckerSettings(); }}>
+                <Text style={styles.toolTextButtonText}>{copy.linkCheckerSettings}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.toolTextButton} onPress={() => { setIsLibraryToolsVisible(false); handleSyncUpdate(); }}>
+                <Text style={styles.toolTextButtonText}>{isSyncingUpdate ? copy.syncing : copy.syncOta}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.destructiveTextButton} onPress={() => { setIsLibraryToolsVisible(false); handleClearLibrary(); }}>
+                <Text style={styles.destructiveTextButtonText}>{copy.clearLibrary}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={importOptionsVisible}
@@ -1355,9 +1351,6 @@ export default function App() {
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.backgroundBlobTop} />
-        <View style={styles.backgroundBlobBottom} />
-
         <View style={styles.container}>
           {isLoading ? (
             <View style={styles.loaderContainer}>
@@ -1433,10 +1426,11 @@ export default function App() {
               {...commonListProps}
               data={paginatedEntries}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
+              renderItem={({ item, index }) => (
                 <View style={styles.cardWrapper}>
                   <EntryCard
                     entry={item}
+                    editorialIndex={(currentPage - 1) * pageSize + index + 1}
                     language={language}
                     isCheckingLink={checkingEntryId === item.id}
                     onEdit={startEditEntry}
@@ -1468,7 +1462,7 @@ export default function App() {
             accessibilityRole="button"
             accessibilityLabel={copy.toTop}
           >
-            <Text style={styles.scrollTopButtonIcon}>↑</Text>
+            <Text style={styles.scrollTopButtonIcon}>{copy.toTop}</Text>
           </TouchableOpacity>
         ) : null}
       </KeyboardAvoidingView>
@@ -1486,31 +1480,19 @@ const styles = StyleSheet.create({
     backgroundColor: AppTheme.colors.background,
   },
   backgroundBlobTop: {
-    position: 'absolute',
-    top: -80,
-    right: -50,
-    width: 220,
-    height: 220,
-    borderRadius: 999,
-    backgroundColor: AppTheme.colors.backgroundAccent,
+    display: 'none',
   },
   backgroundBlobBottom: {
-    position: 'absolute',
-    bottom: -90,
-    left: -70,
-    width: 240,
-    height: 240,
-    borderRadius: 999,
-    backgroundColor: '#E9DDD1',
+    display: 'none',
   },
   container: {
     flex: 1,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingTop: Platform.select({ ios: 10, android: 16, default: 16 }),
     paddingBottom: 18,
   },
   sectionHeader: {
-    marginBottom: 14,
+    marginBottom: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1721,6 +1703,28 @@ const styles = StyleSheet.create({
   secondaryResultButton: {
     backgroundColor: AppTheme.colors.secondary,
   },
+  toolTextButton: {
+    minHeight: 44,
+    borderTopWidth: 1,
+    borderTopColor: AppTheme.colors.border,
+    justifyContent: 'center',
+  },
+  toolTextButtonText: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  destructiveTextButton: {
+    minHeight: 44,
+    borderTopWidth: 1,
+    borderTopColor: AppTheme.colors.border,
+    justifyContent: 'center',
+  },
+  destructiveTextButtonText: {
+    color: AppTheme.colors.danger,
+    fontSize: 14,
+    fontWeight: '700',
+  },
   downloadResultButton: {
     backgroundColor: AppTheme.colors.success,
   },
@@ -1768,21 +1772,16 @@ const styles = StyleSheet.create({
     bottom: Platform.select({ ios: 34, android: 96, default: 34 }),
     width: 58,
     height: 58,
-    backgroundColor: 'rgba(255, 253, 249, 0.96)',
-    borderRadius: 999,
+    backgroundColor: AppTheme.colors.primary,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: AppTheme.colors.shadow,
-    shadowOpacity: 0.14,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 16,
-    elevation: 8,
   },
   scrollTopButtonIcon: {
-    color: AppTheme.colors.primaryDark,
-    fontSize: 24,
-    fontWeight: '900',
+    color: AppTheme.colors.textOnDark,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

@@ -18,6 +18,18 @@ _Avoid_: Novel when referring to the domain model or existing UI copy.
 The current ordered set of entries after the reader's search and sort choices are applied.
 _Avoid_: List data, visible entries
 
+**Editorial Index**:
+The one-based position of an Entry in the current Library Results. It remains continuous across Results Pages and changes only when the current search, sort, or visibility filter changes.
+_Avoid_: Page number, row number that restarts on each Results Page
+
+**Entry Actions Popup**:
+The compact popup opened from an Entry's Actions control on small screens. It contains Check Link, Edit, and Delete so the Library Result row stays scannable.
+_Avoid_: Permanent action button groups in every mobile row
+
+**Link Check Summary**:
+Optional secondary metadata on an Entry that is shown only after a meaningful link-check result exists. An available update, checked latest chapter, broken link, or blocked source is useful; an unchecked placeholder is not shown.
+_Avoid_: A default link-check badge on every Library Result
+
 **Results Page**:
 One bounded slice of Library Results shown at a time. Changing the search query, sort option, or page size starts again at page 1.
 _Avoid_: Screen, batch

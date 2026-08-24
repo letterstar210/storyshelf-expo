@@ -255,16 +255,11 @@ export const EntryForm = ({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: AppTheme.colors.surfaceRaised,
-    borderRadius: AppTheme.radius.lg,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
     padding: 18,
     marginBottom: 20,
-    shadowColor: AppTheme.colors.shadow,
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 20,
-    elevation: 4,
   },
   header: {
     flexDirection: 'row',
@@ -299,7 +294,7 @@ const styles = StyleSheet.create({
   },
   imagePanel: {
     backgroundColor: AppTheme.colors.background,
-    borderRadius: AppTheme.radius.md,
+    borderRadius: 0,
     padding: 14,
     marginBottom: 14,
   },
@@ -327,7 +322,7 @@ const styles = StyleSheet.create({
   imagePickerButton: {
     flex: 1,
     minHeight: 120,
-    borderRadius: 18,
+    borderRadius: 0,
     backgroundColor: AppTheme.colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -342,7 +337,7 @@ const styles = StyleSheet.create({
   previewImage: {
     width: 108,
     height: 148,
-    borderRadius: 18,
+    borderRadius: 0,
     backgroundColor: AppTheme.colors.surfaceMuted,
   },
   emptyPreview: {
@@ -369,7 +364,7 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: AppTheme.colors.background,
-    borderRadius: AppTheme.radius.md,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: '#E4D4C5',
     paddingHorizontal: 15,
@@ -389,7 +384,7 @@ const styles = StyleSheet.create({
   statusOption: {
     flex: 1,
     minHeight: 42,
-    borderRadius: AppTheme.radius.sm,
+    borderRadius: 0,
     backgroundColor: AppTheme.colors.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
@@ -414,7 +409,7 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
     paddingVertical: 15,
@@ -427,7 +422,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     flex: 1.4,
-    borderRadius: 16,
+    borderRadius: 0,
     backgroundColor: AppTheme.colors.primary,
     paddingVertical: 15,
     alignItems: 'center',

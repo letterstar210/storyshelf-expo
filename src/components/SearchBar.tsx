@@ -89,9 +89,6 @@ export const SearchBar = ({
     <View style={styles.wrapper}>
       <View style={styles.panel}>
         <View style={styles.searchRow}>
-          <View style={styles.searchIconWrap}>
-            <Text style={styles.searchIcon}>⌕</Text>
-          </View>
           <TextInput
             {...autofillDisabledProps}
             style={styles.input}
@@ -120,9 +117,6 @@ export const SearchBar = ({
             <Text style={styles.sortTriggerLabel}>{copy.sortBy}</Text>
             <Text style={styles.sortTriggerValue}>
               {getSortLabel(sortOption, language)}
-            </Text>
-            <Text style={styles.sortTriggerArrow}>
-              {isDropdownVisible ? '▴' : '▾'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -169,7 +163,6 @@ export const SearchBar = ({
                   >
                     {getSortLabel(option, language)}
                   </Text>
-                  {isActive ? <Text style={styles.checkmark}>✓</Text> : null}
                 </TouchableOpacity>
               );
             })}
@@ -185,39 +178,19 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   panel: {
-    backgroundColor: AppTheme.colors.surfaceRaised,
-    borderRadius: AppTheme.radius.lg,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.border,
-    padding: 14,
-    shadowColor: AppTheme.colors.shadow,
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 20,
-    elevation: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: AppTheme.colors.border,
+    paddingBottom: 16,
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: AppTheme.colors.background,
-    borderRadius: AppTheme.radius.md,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: '#E6D7C9',
     paddingHorizontal: 12,
     marginBottom: 12,
-  },
-  searchIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: AppTheme.colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  searchIcon: {
-    fontSize: 18,
-    color: AppTheme.colors.textSecondary,
   },
   input: {
     flex: 1,
@@ -234,7 +207,7 @@ const styles = StyleSheet.create({
   resultChip: {
     flex: 1,
     backgroundColor: AppTheme.colors.secondarySoft,
-    borderRadius: AppTheme.radius.md,
+    borderRadius: 0,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
@@ -255,7 +228,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: AppTheme.colors.surfaceMuted,
-    borderRadius: AppTheme.radius.md,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
     paddingHorizontal: 12,

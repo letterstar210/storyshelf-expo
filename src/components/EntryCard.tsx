@@ -8,6 +8,7 @@ import { formatUpdatedAt } from '../utils/entries';
 
 interface EntryCardProps {
   entry: Entry;
+  editorialIndex: number;
   language: AppLanguage;
   isCheckingLink: boolean;
   onEdit: (entry: Entry) => void;
@@ -18,6 +19,7 @@ interface EntryCardProps {
 
 export const EntryCard = ({
   entry,
+  editorialIndex,
   language,
   isCheckingLink,
   onEdit,
@@ -46,6 +48,7 @@ export const EntryCard = ({
 
   return (
     <View style={styles.card}>
+      <Text style={styles.index}>{String(editorialIndex).padStart(2, '0')}</Text>
       <View style={styles.coverWrap}>
         {imageUri ? (
           <Image source={{ uri: imageUri }} style={styles.cover} contentFit="cover" />
@@ -142,31 +145,32 @@ export const EntryCard = ({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: AppTheme.colors.surfaceRaised,
-    borderRadius: AppTheme.radius.lg,
-    borderWidth: 1,
+    borderRadius: 0,
+    borderBottomWidth: 1,
     borderColor: AppTheme.colors.border,
-    padding: 14,
+    paddingVertical: 14,
     flexDirection: 'row',
     gap: 14,
-    shadowColor: AppTheme.colors.shadow,
-    shadowOpacity: 0.09,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 20,
-    elevation: 4,
+  },
+  index: {
+    width: 30,
+    color: AppTheme.colors.primary,
+    fontSize: 18,
+    fontWeight: '700',
   },
   coverWrap: {
-    width: 86,
+    width: 58,
   },
   cover: {
-    width: 86,
-    height: 124,
-    borderRadius: 18,
+    width: 58,
+    height: 82,
+    borderRadius: 0,
     backgroundColor: AppTheme.colors.surfaceMuted,
   },
   placeholderCover: {
-    width: 86,
-    height: 124,
-    borderRadius: 18,
+    width: 58,
+    height: 82,
+    borderRadius: 0,
     backgroundColor: AppTheme.colors.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',

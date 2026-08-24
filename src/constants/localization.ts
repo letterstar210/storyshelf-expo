@@ -18,6 +18,8 @@ const translations = {
     clearing: 'Clearing...',
     closeForm: 'Close form',
     addEntry: 'Add entry',
+    libraryTools: 'Library tools',
+    actions: 'Actions',
     appTitle: 'Comic Reading Tracker',
     appSubtitle:
       'Keep every comic in one place, track the latest chapter, and import large libraries with a cleaner workflow.',
@@ -256,6 +258,8 @@ const translations = {
     clearing: 'กำลังล้าง...',
     closeForm: 'ปิดฟอร์ม',
     addEntry: 'เพิ่มรายการ',
+    libraryTools: 'เครื่องมือคลัง',
+    actions: 'การทำงาน',
     appTitle: 'ตัวติดตามการอ่านการ์ตูน',
     appSubtitle:
       'เก็บการ์ตูนทั้งหมดไว้ที่เดียว ติดตามตอนล่าสุด และนำเข้าคลังขนาดใหญ่ได้ง่ายขึ้น',

@@ -7,6 +7,8 @@ import { chromium } from 'playwright';
 const PORT = Number(process.env.LINK_CHECKER_PORT || 4317);
 const MAX_ACTIVE_CHECKS = 2;
 const chapterPattern = /(?:chapter|episode|ep\.?|ตอนที่)\s*([0-9]+(?:\.[0-9]+)?)/gi;
+const chapterOptionSelector =
+  '#chapter option, select[name="chapter"] option, select.single-chapter-select option, select.rsel option, #chapter-select option';
 
 let browser;
 let activeChecks = 0;
@@ -22,6 +24,33 @@ const getChapterNumbers = (values) => {
   }
 
   return numbers;
+};
+
+const getLatestChapter = (values) => {
+  const chapters = getChapterNumbers(values);
+  return chapters.length > 0 ? Math.max(...chapters) : undefined;
+};
+
+const getSeriesPath = (value) => {
+  const path = decodeURIComponent(new URL(value).pathname)
+    .toLowerCase()
+    .replace(/\/+$/, '');
+
+  return path.replace(/(?:[-/](?:chapter|episode|ep\.?|ตอนที่)[\s_-]*\d+(?:\.\d+)?)$/, '');
+};
+
+const getSameSeriesChapterTexts = (links, pageUrl) => {
+  const seriesPath = getSeriesPath(pageUrl);
+
+  return links
+    .filter((link) => {
+      try {
+        return getSeriesPath(link.href) === seriesPath;
+      } catch {
+        return false;
+      }
+    })
+    .map((link) => link.text);
 };
 
 const getSavedChapterNumber = (value) => {
@@ -128,14 +157,20 @@ const inspectLink = async (urlValue, savedEpisode) => {
       };
     }
 
-    const texts = await page
-      .locator(
-        '#chapter option, select[name="chapter"] option, select.single-chapter-select option, select.rsel option, #chapter-select option, a'
-      )
-      .allTextContents();
-    const chapters = getChapterNumbers(texts);
+    // Chapter selectors belong to the current reader; unrelated links are fallback only.
+    let latest = getLatestChapter(await page.locator(chapterOptionSelector).allTextContents());
 
-    if (chapters.length === 0) {
+    if (latest === undefined) {
+      const links = await page.locator('a').evaluateAll((nodes) =>
+        nodes.map((node) => ({
+          href: node.href,
+          text: node.textContent ?? '',
+        }))
+      );
+      latest = getLatestChapter(getSameSeriesChapterTexts(links, finalUrl.toString()));
+    }
+
+    if (latest === undefined) {
       return {
         status: 'check-failed',
         checkedAt,
@@ -144,7 +179,6 @@ const inspectLink = async (urlValue, savedEpisode) => {
       };
     }
 
-    const latest = Math.max(...chapters);
     const saved = getSavedChapterNumber(savedEpisode);
     const updateCount = Number.isFinite(saved) ? Number((latest - saved).toFixed(2)) : undefined;
 
@@ -180,7 +214,17 @@ const getLocalUrls = () => {
 
 const runSelfTest = () => {
   assert.deepEqual(getChapterNumbers(['Chapter 173', 'ตอนที่ 170', 'ignore']), [173, 170]);
-  assert.equal(Math.max(...getChapterNumbers(['ตอนที่ 173', 'Chapter 170'])), 173);
+  assert.equal(getLatestChapter(['ตอนที่ 173', 'Chapter 170']), 173);
+  assert.deepEqual(
+    getSameSeriesChapterTexts(
+      [
+        { text: 'Chapter 66', href: 'https://example.com/side-character-%E0%B8%95%E0%B8%AD%E0%B8%99%E0%B8%97%E0%B8%B5%E0%B9%88-66/' },
+        { text: 'Chapter 132', href: 'https://example.com/another-series-%E0%B8%95%E0%B8%AD%E0%B8%99%E0%B8%97%E0%B8%B5%E0%B9%88-132/' },
+      ],
+      'https://example.com/side-character-%E0%B8%95%E0%B8%AD%E0%B8%99%E0%B8%97%E0%B8%B5%E0%B9%88-66/'
+    ),
+    ['Chapter 66']
+  );
   assert.equal(getSavedChapterNumber('170'), 170);
   console.log('Link checker parser self-test passed.');
 };

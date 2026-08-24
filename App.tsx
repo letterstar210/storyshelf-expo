@@ -63,6 +63,7 @@ import {
 import { parseWorkbookEntries } from './src/utils/importWorkbook';
 import { openEntryLink } from './src/utils/linking';
 import { checkLink } from './src/services/linkChecker';
+import { persistLocalCover } from './src/services/coverStorage';
 const LANGUAGE_STORAGE_KEY = 'app_language';
 const PAGE_SIZE_STORAGE_KEY = 'library_page_size';
 const LINK_CHECKER_URL_STORAGE_KEY = 'link_checker_url';
@@ -419,9 +420,16 @@ export default function App() {
       });
 
       if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const localImageUri = await persistLocalCover(
+          asset.uri,
+          asset.fileName,
+          asset.mimeType
+        );
+
         setFormValues((current) => ({
           ...current,
-          localImageUri: result.assets[0].uri,
+          localImageUri,
           coverImage: '',
         }));
       }
@@ -446,9 +454,16 @@ export default function App() {
       });
 
       if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const localImageUri = await persistLocalCover(
+          asset.uri,
+          asset.fileName,
+          asset.mimeType
+        );
+
         setFormValues((current) => ({
           ...current,
-          localImageUri: result.assets[0].uri,
+          localImageUri,
           coverImage: '',
         }));
       }

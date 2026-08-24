@@ -1436,6 +1436,120 @@ export default function App() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.container}>
+          {isLoading ? (
+            <View style={styles.loaderContainer}>
+              <View style={styles.loaderCard}>
+                <ActivityIndicator size="large" color={AppTheme.colors.primary} />
+                <Text style={styles.loaderTitle}>{copy.loadingLibrary}</Text>
+                <Text style={styles.loaderText}>{copy.loadingLibraryText}</Text>
+              </View>
+            </View>
+          ) : isFormVisible ? (
+            <ScrollView
+              ref={formScrollRef}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              keyboardDismissMode="interactive"
+              contentContainerStyle={styles.formScreenContainer}
+            >
+              <View style={styles.formScreenHeader}>
+                <TouchableOpacity
+                  style={styles.formScreenCloseButton}
+                  onPress={resetForm}
+                  activeOpacity={0.88}
+                >
+                  <Text style={styles.formScreenCloseButtonText}>
+                    {copy.closeForm}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {entryFormElement}
+            </ScrollView>
+          ) : visibleEntries.length === 0 ? (
+            <FlatList
+              {...commonListProps}
+              data={[] as Entry[]}
+              keyExtractor={(_, index) => `empty-${index}`}
+              renderItem={() => null}
+              ListEmptyComponent={
+                <EmptyState
+                  title={
+                    entries.length === 0
+                      ? copy.noComicsSaved
+                      : copy.noMatchingResults
+                  }
+                  description={
+                    entries.length === 0
+                      ? copy.emptyDescription
+                      : copy.noResultsDescription
+                  }
+                  actionLabel={
+                    entries.length === 0
+                      ? copy.addFirstEntry
+                      : copy.clearSearch
+                  }
+                  onActionPress={
+                    entries.length === 0
+                      ? showCreateForm
+                      : () => {
+                          setSearchText('');
+                        }
+                  }
+                />
+              }
+            />
+          ) : (
+            <FlatList
+              {...commonListProps}
+              data={paginatedEntries}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item, index }) => (
+                <View style={styles.cardWrapper}>
+                  <EntryCard
+                    entry={item}
+                    editorialIndex={(currentPage - 1) * pageSize + index + 1}
+                    language={language}
+                    isCheckingLink={checkingEntryId === item.id}
+                    onEdit={startEditEntry}
+                    onDelete={handleDelete}
+                    onOpenLink={(url) => openEntryLink(url, language)}
+                    onCheckLink={handleCheckLink}
+                  />
+                </View>
+              )}
+              ListFooterComponent={
+                totalPages > 1 ? (
+                  <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                    copy={copy}
+                  />
+                ) : null
+              }
+            />
+          )}
+        </View>
+
+        {showScrollTopButton && !isFormVisible ? (
+          <TouchableOpacity
+            style={styles.scrollTopButton}
+            onPress={scrollToTop}
+            activeOpacity={0.88}
+            accessibilityRole="button"
+            accessibilityLabel={copy.toTop}
+          >
+            <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        ) : null}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

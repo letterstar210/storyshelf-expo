@@ -95,7 +95,7 @@ export const EntryCard = ({
               <Text style={styles.linkButtonText}>{copy.openReadingLink}</Text>
             </TouchableOpacity>
 
-            <View style={styles.linkCheckRow}>
+            {entry.linkCheck ? <View style={styles.linkCheckRow}>
               <View style={styles.linkCheckTextWrap}>
                 <Text
                   style={[
@@ -116,7 +116,7 @@ export const EntryCard = ({
                   </Text>
                 ) : null}
               </View>
-              <TouchableOpacity
+              {isDesktop ? <TouchableOpacity
                 style={styles.checkLinkButton}
                 onPress={() => onCheckLink(entry)}
                 disabled={isCheckingLink}
@@ -125,18 +125,18 @@ export const EntryCard = ({
                 <Text style={styles.checkLinkButtonText}>
                   {isCheckingLink ? copy.linkChecking : copy.checkLink}
                 </Text>
-              </TouchableOpacity>
-            </View>
+              </TouchableOpacity> : null}
+            </View> : null}
           </>
         ) : null}
 
         {isDesktop ? (
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.editButton} onPress={() => onEdit(entry)}><Text style={styles.editText}>{copy.edit}</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(entry.id)}><Text style={styles.deleteText}>{copy.delete}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.editButton} onPress={() => onEdit(entry)} accessibilityRole="button"><Text style={styles.editText}>{copy.edit}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(entry.id)} accessibilityRole="button"><Text style={styles.deleteText}>{copy.delete}</Text></TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity style={styles.actionsTrigger} onPress={() => setIsActionsVisible(true)}><Text style={styles.actionsTriggerText}>{copy.actions}</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.actionsTrigger} onPress={() => setIsActionsVisible(true)} accessibilityRole="button"><Text style={styles.actionsTriggerText}>{copy.actions}</Text></TouchableOpacity>
         )}
       </View>
 
@@ -288,31 +288,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
+  actions: { flexDirection: 'row', gap: 16, alignSelf: 'flex-start' },
   actionsTrigger: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', borderTopWidth: 1, borderTopColor: AppTheme.colors.border, paddingRight: 12 },
   actionsTriggerText: { color: AppTheme.colors.primary, fontSize: 13, fontWeight: '700' },
   editButton: {
-    flex: 1,
-    backgroundColor: AppTheme.colors.secondary,
-    borderRadius: 14,
-    minHeight: 42,
-    alignItems: 'center',
+    minHeight: 36,
     justifyContent: 'center',
   },
   editText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
+    color: AppTheme.colors.primary,
+    fontWeight: '700',
     fontSize: 13,
   },
   deleteButton: {
-    flex: 1,
-    backgroundColor: '#F8DDDA',
-    borderRadius: 14,
-    minHeight: 42,
-    alignItems: 'center',
+    minHeight: 36,
     justifyContent: 'center',
   },
   deleteText: {

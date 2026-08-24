@@ -6,6 +6,7 @@ import { AppLanguage, getCopy } from '../constants/localization';
 interface ScreenHeaderProps {
   title: string;
   totalEntriesText: string;
+  statusCounts: { ongoing: number; completed: number; discontinued: number };
   language: AppLanguage;
   onLanguageChange: (language: AppLanguage) => void;
   onToggleForm: () => void;
@@ -15,6 +16,7 @@ interface ScreenHeaderProps {
 export const ScreenHeader = ({
   title,
   totalEntriesText,
+  statusCounts,
   language,
   onLanguageChange,
   onToggleForm,
@@ -30,10 +32,10 @@ export const ScreenHeader = ({
           <Text style={styles.title}>{title}</Text>
         </View>
         <View style={styles.languageSwitcher}>
-          <TouchableOpacity style={[styles.languageButton, language === 'th' && styles.languageButtonActive]} onPress={() => onLanguageChange('th')}>
+          <TouchableOpacity style={[styles.languageButton, language === 'th' && styles.languageButtonActive]} onPress={() => onLanguageChange('th')} accessibilityRole="button" accessibilityState={{ selected: language === 'th' }}>
             <Text style={[styles.languageText, language === 'th' && styles.languageTextActive]}>{copy.thai}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.languageButton, language === 'en' && styles.languageButtonActive]} onPress={() => onLanguageChange('en')}>
+          <TouchableOpacity style={[styles.languageButton, language === 'en' && styles.languageButtonActive]} onPress={() => onLanguageChange('en')} accessibilityRole="button" accessibilityState={{ selected: language === 'en' }}>
             <Text style={[styles.languageText, language === 'en' && styles.languageTextActive]}>{copy.english}</Text>
           </TouchableOpacity>
         </View>
@@ -45,12 +47,17 @@ export const ScreenHeader = ({
           <Text style={styles.totalLabel}>{copy.library}</Text>
         </View>
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.toolsButton} onPress={onToolsPress} activeOpacity={0.82}>
+          <TouchableOpacity style={styles.toolsButton} onPress={onToolsPress} activeOpacity={0.82} accessibilityRole="button">
             <Text style={styles.toolsButtonText}>{copy.libraryTools}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.addButton} onPress={onToggleForm} activeOpacity={0.82}>
+          <TouchableOpacity style={styles.addButton} onPress={onToggleForm} activeOpacity={0.82} accessibilityRole="button">
             <Text style={styles.addButtonText}>{copy.addEntry}</Text>
           </TouchableOpacity>
+        </View>
+        <View style={styles.metrics}>
+          <View style={styles.metric}><Text style={styles.metricValue}>{statusCounts.ongoing}</Text><Text style={styles.metricLabel}>{copy.statusOngoing}</Text></View>
+          <View style={styles.metric}><Text style={styles.metricValue}>{statusCounts.completed}</Text><Text style={styles.metricLabel}>{copy.statusCompleted}</Text></View>
+          <View style={styles.metric}><Text style={styles.metricValue}>{statusCounts.discontinued}</Text><Text style={styles.metricLabel}>{copy.statusDiscontinued}</Text></View>
         </View>
       </View>
     </View>
@@ -68,7 +75,11 @@ const styles = StyleSheet.create({
   languageButtonActive: { backgroundColor: AppTheme.colors.primary },
   languageText: { color: AppTheme.colors.textSecondary, fontSize: 12, fontWeight: '700' },
   languageTextActive: { color: AppTheme.colors.textOnDark },
-  summaryRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 14, paddingTop: 18 },
+  summaryRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 14, paddingTop: 18 },
+  metrics: { width: '100%', flexDirection: 'row', gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: AppTheme.colors.border },
+  metric: { flex: 1, borderLeftWidth: 1, borderLeftColor: AppTheme.colors.border, paddingLeft: 8 },
+  metricValue: { color: AppTheme.colors.textPrimary, fontSize: 16, fontWeight: '700' },
+  metricLabel: { color: AppTheme.colors.textMuted, fontSize: 10, marginTop: 2 },
   totalValue: { color: AppTheme.colors.textPrimary, fontSize: 28, fontWeight: '700', letterSpacing: -0.8 },
   totalLabel: { color: AppTheme.colors.textMuted, fontSize: 12, marginTop: 1 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 },

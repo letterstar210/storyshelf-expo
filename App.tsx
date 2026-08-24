@@ -78,6 +78,8 @@ const EMPTY_FORM: EntryFormValues = {
   localImageUri: null,
 };
 
+type LibraryStatusFilter = 'all' | Entry['seriesStatus'];
+
 const getFileExtension = (fileName: string) => {
   const parts = fileName.toLowerCase().split('.');
   return parts.length > 1 ? parts.pop() ?? '' : '';
@@ -215,7 +217,7 @@ export default function App() {
   const [language, setLanguage] = useState<AppLanguage>('th');
   const [searchText, setSearchText] = useState('');
   const [sortOption, setSortOption] = useState<EntrySortOption>('latest');
-  const [hideCompleted, setHideCompleted] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<LibraryStatusFilter>('all');
   const [pageSize, setPageSize] = useState<PageSize>(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [isFormVisible, setIsFormVisible] = useState(false);
@@ -267,12 +269,14 @@ export default function App() {
     [entries, searchText, sortOption]
   );
   const visibleEntries = useMemo(
-    () =>
-      hideCompleted
-        ? filteredEntries.filter((entry) => entry.seriesStatus !== 'completed')
-        : filteredEntries,
-    [filteredEntries, hideCompleted]
+    () => statusFilter === 'all' ? filteredEntries : filteredEntries.filter((entry) => entry.seriesStatus === statusFilter),
+    [filteredEntries, statusFilter]
   );
+  const statusCounts = useMemo(() => ({
+    ongoing: entries.filter((entry) => entry.seriesStatus !== 'completed' && entry.seriesStatus !== 'discontinued').length,
+    completed: entries.filter((entry) => entry.seriesStatus === 'completed').length,
+    discontinued: entries.filter((entry) => entry.seriesStatus === 'discontinued').length,
+  }), [entries]);
   const totalPages = Math.max(1, Math.ceil(visibleEntries.length / pageSize));
   const paginatedEntries = useMemo(() => {
     const firstEntryIndex = (currentPage - 1) * pageSize;
@@ -618,7 +622,7 @@ export default function App() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [hideCompleted, pageSize, searchText, sortOption]);
+  }, [pageSize, searchText, sortOption, statusFilter]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
@@ -1086,6 +1090,7 @@ export default function App() {
       <ScreenHeader
         title={copy.appTitle}
         totalEntriesText={totalEntriesText}
+        statusCounts={statusCounts}
         language={language}
         onLanguageChange={changeLanguage}
         onToggleForm={handleToggleForm}
@@ -1116,25 +1121,17 @@ export default function App() {
         </View>
       </View>
 
-      <TouchableOpacity
-        style={[
-          styles.completedFilterButton,
-          hideCompleted && styles.completedFilterButtonActive,
-        ]}
-        onPress={() => setHideCompleted((current) => !current)}
-        activeOpacity={0.86}
-        accessibilityRole="button"
-        accessibilityState={{ selected: hideCompleted }}
-      >
-        <Text
-          style={[
-            styles.completedFilterButtonText,
-            hideCompleted && styles.completedFilterButtonTextActive,
-          ]}
-        >
-          {hideCompleted ? copy.showCompleted : copy.hideCompleted}
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.statusFilters}>
+        {([
+          ['all', copy.all],
+          ['ongoing', copy.statusOngoing],
+          ['completed', copy.statusCompleted],
+          ['discontinued', copy.statusDiscontinued],
+        ] as const).map(([value, label]) => {
+          const selected = statusFilter === value;
+          return <TouchableOpacity key={value} style={[styles.statusFilterButton, selected && styles.statusFilterButtonActive]} onPress={() => setStatusFilter(value)} accessibilityRole="button" accessibilityState={{ selected }}><Text style={[styles.statusFilterText, selected && styles.statusFilterTextActive]}>{label}</Text></TouchableOpacity>;
+        })}
+      </View>
 
       <PageSizeSelector
         pageSize={pageSize}
@@ -1403,19 +1400,13 @@ export default function App() {
                   actionLabel={
                     entries.length === 0
                       ? copy.addFirstEntry
-                      : hideCompleted
-                        ? copy.showCompleted
-                        : copy.clearSearch
+                      : copy.clearSearch
                   }
                   onActionPress={
                     entries.length === 0
                       ? showCreateForm
                       : () => {
-                          if (hideCompleted) {
-                            setHideCompleted(false);
-                          } else {
-                            setSearchText('');
-                          }
+                          setSearchText('');
                         }
                   }
                 />
@@ -1703,6 +1694,23 @@ const styles = StyleSheet.create({
   secondaryResultButton: {
     backgroundColor: AppTheme.colors.secondary,
   },
+  statusFilters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: AppTheme.colors.border,
+    marginBottom: 14,
+  },
+  statusFilterButton: {
+    minHeight: 38,
+    justifyContent: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  statusFilterButtonActive: { borderBottomColor: AppTheme.colors.primary },
+  statusFilterText: { color: AppTheme.colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  statusFilterTextActive: { color: AppTheme.colors.primary, fontWeight: '700' },
   toolTextButton: {
     minHeight: 44,
     borderTopWidth: 1,

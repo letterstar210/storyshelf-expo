@@ -43,3 +43,6 @@ yarn-error.*
 /ios
 /android
 link-checker/*.log
+
+# Local UI preview captures
+scratch/

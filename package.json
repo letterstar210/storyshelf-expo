@@ -11,7 +11,9 @@
     "generate:default-library": "node scripts/generate-default-library.mjs",
     "ota:preview": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-ota-update.ps1 -Channel preview",
     "ota:production": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-ota-update.ps1 -Channel production",
-    "publish:preview": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-ota-update.ps1 -Channel preview"
+    "publish:preview": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-ota-update.ps1 -Channel preview",
+    "link-checker": "node link-checker/server.mjs",
+    "link-checker:test": "node link-checker/server.mjs --self-test"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -24,10 +26,12 @@
     "expo-status-bar": "~3.0.9",
     "expo-updates": "~29.0.17",
     "jszip": "^3.10.1",
+    "playwright": "^1.62.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-web": "^0.21.0",
+    "playwright": "^1.55.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

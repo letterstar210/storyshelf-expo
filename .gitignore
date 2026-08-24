@@ -7,6 +7,7 @@ node_modules/
 .expo/
 .expo-web.log
 .codex-remote-attachments/
+.freebuff/
 dist/
 web-build/
 expo-env.d.ts
@@ -41,3 +42,4 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+link-checker/*.log

@@ -9,20 +9,40 @@ import { formatUpdatedAt } from '../utils/entries';
 interface EntryCardProps {
   entry: Entry;
   language: AppLanguage;
+  isCheckingLink: boolean;
   onEdit: (entry: Entry) => void;
   onDelete: (entryId: string) => void;
   onOpenLink: (url: string) => void;
+  onCheckLink: (entry: Entry) => void;
 }
 
 export const EntryCard = ({
   entry,
   language,
+  isCheckingLink,
   onEdit,
   onDelete,
   onOpenLink,
+  onCheckLink,
 }: EntryCardProps) => {
   const copy = getCopy(language);
   const imageUri = entry.localImageUri || entry.coverImage;
+  const seriesStatus =
+    entry.seriesStatus === 'completed'
+      ? copy.statusCompleted
+      : entry.seriesStatus === 'discontinued'
+        ? copy.statusDiscontinued
+        : copy.statusOngoing;
+  const linkCheckLabel =
+    entry.linkCheck?.status === 'update-available'
+      ? copy.linkCheckUpdateAvailable
+      : entry.linkCheck?.status === 'up-to-date'
+        ? copy.linkCheckUpToDate
+        : entry.linkCheck?.status === 'broken'
+          ? copy.linkCheckBroken
+          : entry.linkCheck?.status === 'check-failed'
+            ? copy.linkCheckFailed
+            : copy.linkCheckNotChecked;
 
   return (
     <View style={styles.card}>
@@ -59,17 +79,50 @@ export const EntryCard = ({
             </Text>
           </View>
           <View style={[styles.infoPill, styles.infoPillAlt]}>
-            <Text style={styles.infoLabel}>{copy.linkStatus}</Text>
-            <Text style={styles.infoValue}>
-              {entry.link ? copy.hasReadingLink : copy.savedOnly}
-            </Text>
+            <Text style={styles.infoLabel}>{copy.seriesStatus}</Text>
+            <Text style={styles.infoValue}>{seriesStatus}</Text>
           </View>
         </View>
 
         {entry.link ? (
-          <TouchableOpacity style={styles.linkButton} onPress={() => onOpenLink(entry.link)}>
-            <Text style={styles.linkButtonText}>{copy.openReadingLink}</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.linkButton} onPress={() => onOpenLink(entry.link)}>
+              <Text style={styles.linkButtonText}>{copy.openReadingLink}</Text>
+            </TouchableOpacity>
+
+            <View style={styles.linkCheckRow}>
+              <View style={styles.linkCheckTextWrap}>
+                <Text
+                  style={[
+                    styles.linkCheckStatus,
+                    entry.linkCheck?.status === 'update-available' &&
+                      styles.linkCheckStatusUpdate,
+                    entry.linkCheck?.status === 'broken' && styles.linkCheckStatusError,
+                  ]}
+                >
+                  {linkCheckLabel}
+                </Text>
+                {entry.linkCheck?.latestEpisode ? (
+                  <Text style={styles.linkCheckDetail}>
+                    {copy.linkCheckLatest}: {entry.linkCheck.latestEpisode}
+                    {entry.linkCheck.updateCount
+                      ? ` (+${entry.linkCheck.updateCount})`
+                      : ''}
+                  </Text>
+                ) : null}
+              </View>
+              <TouchableOpacity
+                style={styles.checkLinkButton}
+                onPress={() => onCheckLink(entry)}
+                disabled={isCheckingLink}
+                activeOpacity={0.84}
+              >
+                <Text style={styles.checkLinkButtonText}>
+                  {isCheckingLink ? copy.linkChecking : copy.checkLink}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
         ) : null}
 
         <View style={styles.actions}>
@@ -193,6 +246,44 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: AppTheme.colors.primaryDark,
     fontWeight: '800',
+  },
+  linkCheckRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 12,
+  },
+  linkCheckTextWrap: {
+    flex: 1,
+  },
+  linkCheckStatus: {
+    color: AppTheme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  linkCheckStatusUpdate: {
+    color: AppTheme.colors.success,
+  },
+  linkCheckStatusError: {
+    color: AppTheme.colors.danger,
+  },
+  linkCheckDetail: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  checkLinkButton: {
+    backgroundColor: AppTheme.colors.secondarySoft,
+    borderRadius: AppTheme.radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+  },
+  checkLinkButtonText: {
+    color: AppTheme.colors.secondary,
+    fontSize: 12,
+    fontWeight: '900',
   },
   actions: {
     flexDirection: 'row',

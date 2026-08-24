@@ -17,7 +17,10 @@ interface ParseWorkbookOptions {
   resolveImageKey?: (rawValue: string) => string | null;
 }
 
-const HEADER_ALIASES: Record<string, keyof EntryDraft | 'ignore'> = {
+const HEADER_ALIASES: Record<
+  string,
+  Exclude<keyof EntryDraft, 'seriesStatus'> | 'ignore'
+> = {
   ['\u0e0a\u0e37\u0e48\u0e2d\u0e40\u0e23\u0e37\u0e48\u0e2d\u0e07']: 'title',
   title: 'title',
   name: 'title',
